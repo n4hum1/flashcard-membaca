@@ -301,7 +301,11 @@ async function ensureRealtimeSession(type){
     // Ask for text output only; the classification prompt itself remains the published prompt.
     rtDc.send(JSON.stringify({
       type:"session.update",
-      session:{turn_detection:null,output_modalities:["text"]}
+      session:{
+        type:"realtime",
+        turn_detection:null,
+        output_modalities:["text"]
+      }
     }));
   })();
 
