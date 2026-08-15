@@ -63,27 +63,81 @@ function shuffleRound(source){
  return a;
 }
 function norm(x){return(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"")}
-function start(name){lvl=name;idx=0;correct=0;lastOfRound=null;items=shuffleRound(levels[lvl].items);menu.style.display="none";game.style.display="block";render()}
+function start(name){
+ closeRealtimeSession();
+ sessionQuestionsUsed=0;
+ lvl=name;idx=0;correct=0;lastOfRound=null;
+ items=shuffleRound(levels[lvl].items);
+ menu.style.display="none";game.style.display="block";render();
+}
 function render(){
  let cfg=levels[lvl],it=items[idx];target.innerHTML="";
  if(cfg.colored){it.parts.forEach(p=>{let s=document.createElement("span");s.className="syll";s.textContent=p;target.appendChild(s)})} else target.textContent=it.text;
  feedback.textContent="";feedback.className="feedback";heard.textContent="";
  $("progress").textContent=`${cfg.title} • ${idx+1}/${items.length}`;$("score").textContent=`Benar: ${correct}`;
- $("info").textContent=cfg.rt?"OpenAI Realtime • satu session per soal":"Speech recognition browser";
+ $("info").textContent=cfg.rt?"OpenAI Realtime • 1 session / 5 soal":"Speech recognition browser";
 }
+let sessionQuestionsUsed=0;
+const QUESTIONS_PER_SESSION=5;
+
+function playCorrectSound(){
+ try{
+   const Ctx=window.AudioContext||window.webkitAudioContext;
+   const ctx=new Ctx();
+   const now=ctx.currentTime;
+   const gain=ctx.createGain();
+   gain.connect(ctx.destination);
+   gain.gain.setValueAtTime(0.0001,now);
+   gain.gain.exponentialRampToValueAtTime(0.18,now+0.015);
+   gain.gain.exponentialRampToValueAtTime(0.0001,now+0.42);
+
+   [659.25,783.99].forEach((freq,i)=>{
+     const osc=ctx.createOscillator();
+     osc.type="sine";
+     osc.frequency.value=freq;
+     osc.connect(gain);
+     osc.start(now+i*0.10);
+     osc.stop(now+0.25+i*0.10);
+   });
+   setTimeout(()=>ctx.close(),700);
+ }catch(e){}
+}
+
 function next(){
  idx++;
- if(idx>=items.length){lastOfRound=items[items.length-1];items=shuffleRound(levels[lvl].items);idx=0}
+ if(levels[lvl].rt){
+   sessionQuestionsUsed++;
+   if(sessionQuestionsUsed>=QUESTIONS_PER_SESSION){
+     closeRealtimeSession();
+     sessionQuestionsUsed=0;
+   }
+ }
+ if(idx>=items.length){
+   lastOfRound=items[items.length-1];
+   items=shuffleRound(levels[lvl].items);
+   idx=0;
+   closeRealtimeSession();
+   sessionQuestionsUsed=0;
+ }
  render();
 }
 function result(ok,label){
  heard.textContent=label?`Terdengar: ${label}`:"Suara belum terbaca";
- if(ok){correct++;feedback.textContent="✓ Benar!";feedback.className="feedback ok";$("score").textContent=`Benar: ${correct}`;setTimeout(next,550)}
- else{feedback.textContent="✗ Coba lagi";feedback.className="feedback bad"}
+ if(ok){
+   correct++;
+   feedback.textContent="✓ Benar!";
+   feedback.className="feedback ok";
+   $("score").textContent=`Benar: ${correct}`;
+   playCorrectSound();
+   setTimeout(next,700);
+ }else{
+   feedback.textContent="✗ Coba lagi";
+   feedback.className="feedback bad";
+ }
 }
 function speak(t){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="id-ID";u.rate=.8;speechSynthesis.speak(u)}
 document.querySelectorAll(".level").forEach(b=>b.onclick=()=>start(b.dataset.level));
-$("back").onclick=()=>{speechSynthesis.cancel();game.style.display="none";menu.style.display="block"};
+$("back").onclick=()=>{speechSynthesis.cancel();closeRealtimeSession();sessionQuestionsUsed=0;game.style.display="none";menu.style.display="block"};
 $("listen").onclick=()=>speak(items[idx].answer);
 
 // Complete words: browser STT.
@@ -91,87 +145,188 @@ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=SR?new SR():null;
 if(rec){rec.lang="id-ID";rec.interimResults=false;rec.maxAlternatives=10;rec.onresult=e=>{let arr=[];for(let i=0;i<e.results[0].length;i++)arr.push(e.results[0][i].transcript);result(arr.some(x=>norm(x)===norm(items[idx].answer)),arr[0])};rec.onerror=e=>{heard.textContent="Speech error: "+e.error};rec.onend=()=>mic.disabled=false}
 
-// Realtime: one fresh WebRTC session per answer.
-async function realtimeOnce(type){
- mic.disabled=true;feedback.textContent="";heard.textContent="Menyiapkan mikrofon...";
- let pc=null,stream=null,dc=null;
- try{
-   const secretRes=await fetch(BACKEND+"/api/client-secret",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type})});
+// Realtime: keep one WebRTC session for up to 5 completed questions.
+// The microphone track is muted between attempts, so idle audio is not sent.
+let rtPc=null,rtStream=null,rtDc=null,rtTrack=null,rtType=null;
+let rtReadyPromise=null,rtAttemptActive=false,rtVoiceStarted=false,rtFinalText="",rtTimeout=null;
+
+function closeRealtimeSession(){
+ clearTimeout(rtTimeout);
+ rtTimeout=null;
+ rtAttemptActive=false;
+ try{if(rtTrack)rtTrack.enabled=false}catch(e){}
+ try{rtDc?.close()}catch(e){}
+ try{rtPc?.close()}catch(e){}
+ try{rtStream?.getTracks().forEach(t=>t.stop())}catch(e){}
+ rtPc=rtStream=rtDc=rtTrack=null;
+ rtType=null;
+ rtReadyPromise=null;
+ mic.disabled=false;
+}
+
+function extractRealtimeLabel(ev){
+ if(ev.type==="response.output_text.delta"||ev.type==="response.text.delta"){
+   rtFinalText += ev.delta || "";
+ }
+ if(ev.type==="response.output_text.done"||ev.type==="response.text.done"){
+   rtFinalText = ev.text || rtFinalText;
+ }
+ if(ev.type==="response.output_audio_transcript.delta"){
+   rtFinalText += ev.delta || "";
+ }
+ if(ev.type==="response.output_audio_transcript.done"){
+   rtFinalText = ev.transcript || rtFinalText;
+ }
+ if(ev.type==="response.content_part.done"){
+   if(ev.part?.text) rtFinalText = ev.part.text;
+   if(ev.part?.transcript) rtFinalText = ev.part.transcript;
+ }
+}
+
+async function ensureRealtimeSession(type){
+ if(rtDc && rtDc.readyState==="open" && rtType===type) return;
+ if(rtReadyPromise && rtType===type) return rtReadyPromise;
+
+ closeRealtimeSession();
+ rtType=type;
+
+ rtReadyPromise=(async()=>{
+   const secretRes=await fetch(BACKEND+"/api/client-secret",{
+     method:"POST",
+     headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({type})
+   });
    const secretData=await secretRes.json();
    if(!secretRes.ok)throw new Error(secretData.error||"Gagal membuat session");
    const ephemeral=secretData.value || secretData.client_secret?.value;
    if(!ephemeral)throw new Error("Client secret tidak ditemukan");
 
-   pc=new RTCPeerConnection();
-   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-   stream.getTracks().forEach(track=>pc.addTrack(track,stream));
-   dc=pc.createDataChannel("oai-events");
+   rtPc=new RTCPeerConnection();
+   rtStream=await navigator.mediaDevices.getUserMedia({
+     audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}
+   });
+   rtTrack=rtStream.getAudioTracks()[0];
+   rtTrack.enabled=false; // stay muted until the child presses the mic button
+   rtPc.addTrack(rtTrack,rtStream);
 
-   let finalText="",done=false,voiceStarted=false;
-   const close=()=>{if(done)return;done=true;try{dc.close()}catch(e){}try{pc.close()}catch(e){}if(stream)stream.getTracks().forEach(t=>t.stop());mic.disabled=false};
+   rtDc=rtPc.createDataChannel("oai-events");
 
-   dc.onmessage=e=>{
-     let ev;try{ev=JSON.parse(e.data)}catch(_){return}
-     if(ev.type==="input_audio_buffer.speech_started"){voiceStarted=true;heard.textContent="Mendengarkan..."}
-     if(ev.type==="response.output_text.delta"||ev.type==="response.text.delta"){
-       finalText += ev.delta || "";
-     }
-     if(ev.type==="response.output_text.done"||ev.type==="response.text.done"){
-       finalText = ev.text || finalText;
-     }
+   rtDc.onmessage=e=>{
+     let ev;
+     try{ev=JSON.parse(e.data)}catch(_){return}
 
-     // Realtime Playground prompt is configured with audio output.
-     // In that case the label arrives as the transcript of model-generated audio.
-     if(ev.type==="response.output_audio_transcript.delta"){
-       finalText += ev.delta || "";
-     }
-     if(ev.type==="response.output_audio_transcript.done"){
-       finalText = ev.transcript || finalText;
+     extractRealtimeLabel(ev);
+
+     if(ev.type==="input_audio_buffer.speech_started"){
+       rtVoiceStarted=true;
+       heard.textContent="Mendengarkan...";
      }
 
-     if(ev.type==="response.content_part.done"){
-       if(ev.part?.text) finalText = ev.part.text;
-       if(ev.part?.transcript) finalText = ev.part.transcript;
+     if(ev.type==="input_audio_buffer.speech_stopped"){
+       if(rtTrack)rtTrack.enabled=false;
+       heard.textContent="Memeriksa...";
      }
 
-     if(ev.type==="response.done"){
-       if(!finalText){
+     if(ev.type==="response.done" && rtAttemptActive){
+       if(!rtFinalText){
          const outputs=ev.response?.output||[];
          for(const o of outputs){
            for(const c of (o.content||[])){
-             if(c.text) finalText += c.text;
-             if(c.transcript) finalText += c.transcript;
+             if(c.text) rtFinalText += c.text;
+             if(c.transcript) rtFinalText += c.transcript;
            }
          }
        }
-       let label=norm(finalText)||"unknown";
-       close();result(label===norm(items[idx].answer),label);
+
+       clearTimeout(rtTimeout);
+       rtTimeout=null;
+       rtAttemptActive=false;
+       if(rtTrack)rtTrack.enabled=false;
+       mic.disabled=false;
+
+       const label=norm(rtFinalText)||"unknown";
+       rtFinalText="";
+       result(label===norm(items[idx].answer),label);
      }
-     if(ev.type==="error"){let msg=ev.error?.message||"Realtime error";close();heard.textContent="Error: "+msg}
+
+     if(ev.type==="error"){
+       clearTimeout(rtTimeout);
+       rtAttemptActive=false;
+       if(rtTrack)rtTrack.enabled=false;
+       mic.disabled=false;
+       heard.textContent="Error: "+(ev.error?.message||"Realtime error");
+     }
    };
 
-   const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+   const offer=await rtPc.createOffer();
+   await rtPc.setLocalDescription(offer);
+
    const sdpRes=await fetch("https://api.openai.com/v1/realtime/calls",{
      method:"POST",
      body:offer.sdp,
-     headers:{"Authorization":"Bearer "+ephemeral,"Content-Type":"application/sdp"}
+     headers:{
+       "Authorization":"Bearer "+ephemeral,
+       "Content-Type":"application/sdp"
+     }
    });
    if(!sdpRes.ok)throw new Error(await sdpRes.text());
-   await pc.setRemoteDescription({type:"answer",sdp:await sdpRes.text()});
-   heard.textContent="Bicara sekarang...";
 
-   // Prompt is configured server-side. VAD from published prompt ends the turn.
-   // Hard timeout prevents a stuck "listening" state.
-   setTimeout(()=>{if(!done){close();heard.textContent=voiceStarted?"Tidak mendapat hasil. Coba lagi.":"Tidak ada suara terdeteksi.";feedback.textContent="✗ Coba lagi";feedback.className="feedback bad"}},9000);
+   await rtPc.setRemoteDescription({type:"answer",sdp:await sdpRes.text()});
+
+   await new Promise((resolve,reject)=>{
+     if(rtDc.readyState==="open")return resolve();
+     const timer=setTimeout(()=>reject(new Error("Realtime connection timeout")),7000);
+     rtDc.onopen=()=>{clearTimeout(timer);resolve()};
+   });
+ })();
+
+ try{
+   await rtReadyPromise;
  }catch(e){
-   try{pc?.close()}catch(_){}
-   if(stream)stream.getTracks().forEach(t=>t.stop());
-   mic.disabled=false;heard.textContent="Error: "+e.message;
+   closeRealtimeSession();
+   throw e;
  }
 }
+
+async function realtimeAttempt(type){
+ if(rtAttemptActive)return;
+ mic.disabled=true;
+ feedback.textContent="";
+ heard.textContent=rtDc?.readyState==="open" ? "Bicara sekarang..." : "Menyiapkan session...";
+
+ try{
+   await ensureRealtimeSession(type);
+
+   rtFinalText="";
+   rtVoiceStarted=false;
+   rtAttemptActive=true;
+   heard.textContent="Bicara sekarang...";
+   rtTrack.enabled=true;
+
+   // Safety timeout only. Normal endpointing comes from the published prompt's VAD.
+   rtTimeout=setTimeout(()=>{
+     if(!rtAttemptActive)return;
+     rtAttemptActive=false;
+     if(rtTrack)rtTrack.enabled=false;
+     mic.disabled=false;
+     heard.textContent=rtVoiceStarted?"Tidak mendapat hasil. Coba lagi.":"Tidak ada suara terdeteksi.";
+     feedback.textContent="✗ Coba lagi";
+     feedback.className="feedback bad";
+   },7000);
+ }catch(e){
+   mic.disabled=false;
+   heard.textContent="Error: "+e.message;
+ }
+}
+
 mic.onclick=()=>{
- if(levels[lvl].rt) realtimeOnce(levels[lvl].rt);
- else if(rec){mic.disabled=true;heard.textContent="Mendengarkan...";try{rec.start()}catch(e){mic.disabled=false}}
- else heard.textContent="Speech recognition browser tidak tersedia.";
+ if(levels[lvl].rt) realtimeAttempt(levels[lvl].rt);
+ else if(rec){
+   mic.disabled=true;
+   heard.textContent="Mendengarkan...";
+   try{rec.start()}catch(e){mic.disabled=false}
+ } else {
+   heard.textContent="Speech recognition browser tidak tersedia.";
+ }
 };
 </script></body></html>
