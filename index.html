@@ -133,20 +133,6 @@ function next(){
  }
  render();
 }
-function result(ok,label){
- heard.textContent=label?`Terdengar: ${label}`:"Suara belum terbaca";
- if(ok){
-   correct++;
-   feedback.textContent="✓ Benar!";
-   feedback.className="feedback ok";
-   $("score").textContent=`Benar: ${correct}`;
-   playCorrectSound();
-   setTimeout(next,700);
- }else{
-   feedback.textContent="✗ Coba lagi";
-   feedback.className="feedback bad";
- }
-}
 function speak(t){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="id-ID";u.rate=.8;speechSynthesis.speak(u)}
 document.querySelectorAll(".level").forEach(b=>b.onclick=()=>start(b.dataset.level));
 $("back").onclick=()=>{speechSynthesis.cancel();closeRealtimeSession();sessionQuestionsUsed=0;game.style.display="none";menu.style.display="block";setState("idle")};
@@ -418,39 +404,49 @@ async function beginAutoListening(){
   }
 }
 
-// Override result so retry/advance returns automatically to local listening.
+// Single result handler for all levels.
 function result(ok,label){
- heard.textContent=label?`Terdengar: ${label}`:"Suara belum terbaca";
- if(ok){
-   setState("correct");
-   correct++;
-   feedback.textContent="✓ Benar!";
-   feedback.className="feedback ok";
-   $("score").textContent=`Benar: ${correct}`;
-   playCorrectSound();
-   setTimeout(()=>{
-     next();
-     setState("idle");
-     setTimeout(()=>beginAutoListening(),450);
-   },700);
- }else{
-   wrongAttempts++;
-   setState("wrong");
-   feedback.className="feedback bad";
+  heard.textContent=label?`Terdengar: ${label}`:"Suara belum terbaca";
 
-   if(wrongAttempts>=2){
-     feedback.textContent="Lewati dulu →";
-     heard.textContent=label?`Terdengar: ${label}`:"Belum terbaca";
-     setTimeout(()=>{
-       next();
-       setState("idle");
-       setTimeout(()=>beginAutoListening(),450);
-     },1100);
-   }else{
-     feedback.textContent="✗ Coba sekali lagi";
-     setTimeout(()=>beginAutoListening(),900);
-   }
- }
+  if(ok){
+    wrongAttempts=0;
+    setState("correct");
+    correct++;
+    feedback.textContent="✓ Benar!";
+    feedback.className="feedback ok";
+    $("score").textContent=`Benar: ${correct}`;
+    playCorrectSound();
+
+    setTimeout(()=>{
+      next();
+      setState("idle");
+      if(levels[lvl].rt) setTimeout(()=>beginAutoListening(),450);
+    },700);
+    return;
+  }
+
+  wrongAttempts += 1;
+  setState("wrong");
+  feedback.className="feedback bad";
+
+  if(wrongAttempts >= 2){
+    // Stop any active capture before moving on, so an old recording cannot
+    // submit a third result for the question that is being skipped.
+    stopLocalMic();
+    feedback.textContent="Lewati dulu →";
+    heard.textContent=label?`Terdengar: ${label} • 2× salah`:"2× belum terbaca";
+
+    setTimeout(()=>{
+      next(); // next() resets wrongAttempts to 0
+      setState("idle");
+      if(levels[lvl].rt) setTimeout(()=>beginAutoListening(),450);
+    },1000);
+  }else{
+    feedback.textContent="✗ Coba sekali lagi (1/2)";
+    if(levels[lvl].rt){
+      setTimeout(()=>beginAutoListening(),850);
+    }
+  }
 }
 
 // For API levels the mic is automatic. Button remains only as manual recovery.
