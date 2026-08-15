@@ -248,6 +248,13 @@ async function ensureRealtimeSession(type){
     if(!key)throw new Error("Client secret tidak ditemukan");
 
     rtPc=new RTCPeerConnection();
+
+    // Realtime WebRTC requires an audio media section in the SDP offer.
+    // recvonly creates that section without sending the tablet microphone.
+    // Child speech is still captured locally, trimmed locally, then uploaded
+    // explicitly through input_audio_buffer.append.
+    rtPc.addTransceiver("audio", {direction:"recvonly"});
+
     rtDc=rtPc.createDataChannel("oai-events");
 
     rtDc.onmessage=e=>{
