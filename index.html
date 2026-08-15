@@ -336,33 +336,57 @@ listen.addEventListener("click", () => {
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+const letterNames = {
+  a:["a"], b:["b","be"], c:["c","ce"], d:["d","de"], e:["e"], f:["f","ef"],
+  g:["g","ge"], h:["h","ha"], i:["i"], j:["j","je"], k:["k","ka"], l:["l","el"],
+  m:["m","em"], n:["n","en"], o:["o"], p:["p","pe"], q:["q","ki"], r:["r","er"],
+  s:["s","es"], t:["t","te"], u:["u"], v:["v","ve"], w:["w","we"], x:["x","eks"],
+  y:["y","ye"], z:["z","zet"]
+};
+
+function acceptedAnswers(){
+  const raw = normalize(getAnswer(items[index]));
+  if(["upper","lower","mixed"].includes(currentLevel)){
+    return letterNames[raw] || [raw];
+  }
+  return [raw];
+}
+
 if(!SpeechRecognition){
   mic.disabled = true;
   heard.textContent = "Speech recognition tidak tersedia. Gunakan Chrome Android.";
 } else {
   const recognition = new SpeechRecognition();
   recognition.lang = "id-ID";
-  recognition.interimResults = false;
+  recognition.interimResults = true;
   recognition.continuous = false;
   recognition.maxAlternatives = 10;
 
-  mic.addEventListener("click", () => {
-    feedback.textContent = "";
-    heard.textContent = "Mendengarkan...";
-    mic.disabled = true;
-    try { recognition.start(); } catch(e) { mic.disabled = false; }
-  });
+  let listenTimer = null;
+  let latestTranscript = "";
+  let gotFinal = false;
+  let evaluated = false;
 
-  recognition.onresult = (event) => {
-    mic.disabled = false;
-    const targetAnswer = normalize(getAnswer(items[index]));
-    const alternatives = [];
-    for(let i=0;i<event.results[0].length;i++){
-      alternatives.push(normalize(event.results[0][i].transcript));
+  function clearListenTimer(){
+    if(listenTimer){
+      clearTimeout(listenTimer);
+      listenTimer = null;
     }
+  }
 
-    heard.textContent = "Terdengar: " + event.results[0][0].transcript;
-    const ok = alternatives.some(x => x === targetAnswer || x.split(/\s+/).includes(targetAnswer));
+  function evaluateTranscript(text){
+    if(evaluated) return;
+    evaluated = true;
+
+    const spoken = normalize(text);
+    const accepted = acceptedAnswers();
+
+    heard.textContent = text ? ("Terdengar: " + text) : "Suara belum terbaca.";
+
+    const ok = spoken && accepted.some(ans =>
+      spoken === normalize(ans) ||
+      spoken.split(/\s+/).includes(normalize(ans))
+    );
 
     if(ok){
       correct++;
@@ -377,28 +401,111 @@ if(!SpeechRecognition){
           index = 0;
         }
         render();
-      }, 700);
+      }, 650);
     }else{
       feedback.textContent = "✗ Coba lagi";
       feedback.className = "feedback bad";
     }
+  }
+
+  mic.addEventListener("click", () => {
+    clearListenTimer();
+    latestTranscript = "";
+    gotFinal = false;
+    evaluated = false;
+
+    feedback.textContent = "";
+    feedback.className = "feedback";
+    heard.textContent = "Mendengarkan...";
+    mic.disabled = true;
+
+    try {
+      recognition.start();
+
+      // Short utterances such as a single letter/syllable often do not
+      // trigger browser endpointing reliably. Stop explicitly.
+      listenTimer = setTimeout(() => {
+        try { recognition.stop(); } catch(e) {}
+      }, 2200);
+
+    } catch(e) {
+      mic.disabled = false;
+      heard.textContent = "Tidak dapat memulai mikrofon. Coba lagi.";
+    }
+  });
+
+  recognition.onresult = (event) => {
+    let best = "";
+
+    for(let i = event.resultIndex; i < event.results.length; i++){
+      if(event.results[i][0] && event.results[i][0].transcript){
+        best = event.results[i][0].transcript.trim();
+        if(best) latestTranscript = best;
+      }
+
+      if(event.results[i].isFinal){
+        gotFinal = true;
+        const alternatives = [];
+        for(let j=0; j<event.results[i].length; j++){
+          alternatives.push(event.results[i][j].transcript.trim());
+        }
+
+        // Prefer any alternative that matches an accepted answer.
+        const accepted = acceptedAnswers().map(normalize);
+        const match = alternatives.find(t => {
+          const n = normalize(t);
+          return accepted.some(a => n === a || n.split(/\s+/).includes(a));
+        });
+
+        evaluateTranscript(match || alternatives[0] || latestTranscript);
+        clearListenTimer();
+        try { recognition.stop(); } catch(e) {}
+        break;
+      }
+    }
+
+    if(latestTranscript && !gotFinal){
+      heard.textContent = "Terdengar: " + latestTranscript;
+    }
   };
 
   recognition.onerror = (event) => {
+    clearListenTimer();
     mic.disabled = false;
+
+    // "aborted" can occur after our deliberate stop; use any transcript collected.
+    if(event.error === "aborted" && latestTranscript){
+      evaluateTranscript(latestTranscript);
+      return;
+    }
+
     const messages = {
-      "not-allowed": "ERROR: not-allowed — izin mikrofon ditolak.",
-      "service-not-allowed": "ERROR: service-not-allowed — layanan speech recognition tidak diizinkan.",
-      "no-speech": "Tidak ada suara terdeteksi. Tekan lalu langsung bicara.",
+      "not-allowed": "Izin mikrofon ditolak.",
+      "service-not-allowed": "Layanan speech recognition tidak diizinkan.",
+      "no-speech": "Tidak ada suara terdeteksi. Coba lagi.",
       "audio-capture": "Mikrofon tidak dapat digunakan browser.",
-      "network": "ERROR: network — layanan speech recognition Chrome tidak dapat dihubungi.",
+      "network": "Layanan speech recognition tidak dapat dihubungi.",
       "aborted": "Pengenalan suara dihentikan.",
       "language-not-supported": "Bahasa Indonesia tidak didukung."
     };
-    heard.textContent = messages[event.error] || ("ERROR SpeechRecognition: " + event.error);
+    heard.textContent = messages[event.error] || ("SpeechRecognition: " + event.error);
   };
 
-  recognition.onend = () => mic.disabled = false;
+  recognition.onend = () => {
+    clearListenTimer();
+    mic.disabled = false;
+
+    // Some Android/Chrome combinations never emit a final result for very short speech.
+    if(!evaluated){
+      if(latestTranscript){
+        evaluateTranscript(latestTranscript);
+      }else{
+        heard.textContent = "Suara belum terbaca. Coba lagi.";
+        feedback.textContent = "✗ Coba lagi";
+        feedback.className = "feedback bad";
+      }
+    }
+  };
 }
 </script>
 </body>
