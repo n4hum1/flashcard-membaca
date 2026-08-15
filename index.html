@@ -147,6 +147,8 @@ if(rec){rec.lang="id-ID";rec.interimResults=false;rec.maxAlternatives=10;rec.onr
 // but microphone audio is NEVER streamed to OpenAI.
 // Audio is captured and VAD-trimmed locally, then only the speech clip is uploaded.
 let rtPc=null,rtDc=null,rtType=null,rtReadyPromise=null;
+let rtSessionConfigured=false;
+let rtSessionConfiguredResolve=null;
 let localStream=null,audioCtx=null,sourceNode=null,processorNode=null;
 let localListening=false,localSpeaking=false,localFrames=[],preRoll=[];
 let silenceMs=0,speechMs=0,noiseFloor=0.008,lastProcessTime=0;
@@ -257,6 +259,15 @@ async function ensureRealtimeSession(type){
 
     rtDc.onmessage=e=>{
       let ev;try{ev=JSON.parse(e.data)}catch(_){return}
+
+      if(ev.type==="session.updated"){
+        rtSessionConfigured=true;
+        if(rtSessionConfiguredResolve){
+          rtSessionConfiguredResolve();
+          rtSessionConfiguredResolve=null;
+        }
+      }
+
       const txt=realtimeTextFromEvent(ev);
       if(txt){
         if(ev.type.endsWith(".done")) responseText=txt;
@@ -274,9 +285,21 @@ async function ensureRealtimeSession(type){
         result(label===norm(items[idx].answer),label);
       }
       if(ev.type==="error"){
+        const msg=ev.error?.message||"Realtime error";
         waitingResponse=false;
-        heard.textContent="Error: "+(ev.error?.message||"Realtime error");
-        setTimeout(()=>beginAutoListening(),900);
+
+        // If an earlier automatic response was still active, cancel it and
+        // recover cleanly. This should be rare after waiting for session.updated.
+        if(msg.toLowerCase().includes("active response")){
+          try{rtDc.send(JSON.stringify({type:"response.cancel"}))}catch(e){}
+          heard.textContent="Sinkronisasi ulang...";
+          setState("processing");
+          setTimeout(()=>beginAutoListening(),1100);
+        }else{
+          heard.textContent="Error: "+msg;
+          setState("wrong");
+          setTimeout(()=>beginAutoListening(),900);
+        }
       }
     };
 
@@ -297,6 +320,14 @@ async function ensureRealtimeSession(type){
 
     // We endpoint locally, so disable server-side turn detection.
     // Ask for text output only; the classification prompt itself remains the published prompt.
+    rtSessionConfigured=false;
+    const configuredPromise=new Promise((resolve,reject)=>{
+      rtSessionConfiguredResolve=resolve;
+      setTimeout(()=>{
+        if(!rtSessionConfigured) reject(new Error("Session configuration timeout"));
+      },5000);
+    });
+
     rtDc.send(JSON.stringify({
       type:"session.update",
       session:{
@@ -305,6 +336,10 @@ async function ensureRealtimeSession(type){
         output_modalities:["text"]
       }
     }));
+
+    // Critical: do not capture/send the first utterance until the server
+    // confirms that automatic VAD response creation has been disabled.
+    await configuredPromise;
   })();
 
   try{await rtReadyPromise}catch(e){
@@ -322,6 +357,8 @@ async function sendTrimmedClip(samples,sampleRate){
 
   try{
     await ensureRealtimeSession(levels[lvl].rt);
+    if(!rtSessionConfigured) throw new Error("Session belum siap");
+    if(waitingResponse) return;
     // Small edge trim after local VAD. This removes most silence while preserving consonant onset.
     const edge=Math.floor(sampleRate*0.035);
     let clip=samples.length>edge*2?samples.slice(edge,samples.length-edge):samples;
