@@ -113,12 +113,36 @@ async function realtimeOnce(type){
    dc.onmessage=e=>{
      let ev;try{ev=JSON.parse(e.data)}catch(_){return}
      if(ev.type==="input_audio_buffer.speech_started"){voiceStarted=true;heard.textContent="Mendengarkan..."}
-     if(ev.type==="response.output_text.delta"||ev.type==="response.text.delta") finalText+=ev.delta||"";
-     if(ev.type==="response.output_text.done"||ev.type==="response.text.done") finalText=ev.text||finalText;
+     if(ev.type==="response.output_text.delta"||ev.type==="response.text.delta"){
+       finalText += ev.delta || "";
+     }
+     if(ev.type==="response.output_text.done"||ev.type==="response.text.done"){
+       finalText = ev.text || finalText;
+     }
+
+     // Realtime Playground prompt is configured with audio output.
+     // In that case the label arrives as the transcript of model-generated audio.
+     if(ev.type==="response.output_audio_transcript.delta"){
+       finalText += ev.delta || "";
+     }
+     if(ev.type==="response.output_audio_transcript.done"){
+       finalText = ev.transcript || finalText;
+     }
+
+     if(ev.type==="response.content_part.done"){
+       if(ev.part?.text) finalText = ev.part.text;
+       if(ev.part?.transcript) finalText = ev.part.transcript;
+     }
+
      if(ev.type==="response.done"){
        if(!finalText){
          const outputs=ev.response?.output||[];
-         for(const o of outputs)for(const c of (o.content||[])) if(c.text) finalText+=c.text;
+         for(const o of outputs){
+           for(const c of (o.content||[])){
+             if(c.text) finalText += c.text;
+             if(c.transcript) finalText += c.transcript;
+           }
+         }
        }
        let label=norm(finalText)||"unknown";
        close();result(label===norm(items[idx].answer),label);
@@ -138,7 +162,7 @@ async function realtimeOnce(type){
 
    // Prompt is configured server-side. VAD from published prompt ends the turn.
    // Hard timeout prevents a stuck "listening" state.
-   setTimeout(()=>{if(!done){close();heard.textContent=voiceStarted?"Tidak mendapat hasil. Coba lagi.":"Tidak ada suara terdeteksi.";feedback.textContent="✗ Coba lagi";feedback.className="feedback bad"}},7000);
+   setTimeout(()=>{if(!done){close();heard.textContent=voiceStarted?"Tidak mendapat hasil. Coba lagi.":"Tidak ada suara terdeteksi.";feedback.textContent="✗ Coba lagi";feedback.className="feedback bad"}},9000);
  }catch(e){
    try{pc?.close()}catch(_){}
    if(stream)stream.getTracks().forEach(t=>t.stop());
