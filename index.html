@@ -27,7 +27,8 @@ body.state-processing{background:#ffedd5} body.state-correct{background:#bbf7d0}
 <button class="level" data-level="upper"><strong>Huruf Besar</strong><span>A, B, C, D ...</span></button>
 <button class="level" data-level="lower"><strong>Huruf Kecil</strong><span>a, b, c, d ...</span></button>
 <button class="level" data-level="mixed"><strong>Huruf Campuran</strong><span>A, b, C, d ...</span></button>
-<button class="level" data-level="syllable"><strong>Suku Kata</strong><span>ba, bi, bu, be, bo ...</span></button>
+<button class="level" data-level="syllableGroup"><strong>Kelompok Suku Kata</strong><span>sa, si, su, se, so dalam satu kelompok.</span></button>
+<button class="level" data-level="syllable"><strong>Suku Kata Campuran</strong><span>ba, su, ki, de ...</span></button>
 <button class="level" data-level="word2"><strong>Kata 2 Suku Kata</strong><span>Suku kata berbeda warna.</span></button>
 <button class="level" data-level="word3"><strong>Kata 3 Suku Kata</strong><span>Kata lebih panjang.</span></button>
 <button class="level" data-level="plain"><strong>Kata Tanpa Warna</strong><span>Latihan membaca kata utuh.</span></button>
@@ -49,7 +50,8 @@ const levels={
 upper:{title:"Huruf Besar",api:"letter",items:[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(x=>({text:x,answer:letterNames[x.toLowerCase()]}))},
 lower:{title:"Huruf Kecil",api:"letter",items:[..."abcdefghijklmnopqrstuvwxyz"].map(x=>({text:x,answer:letterNames[x]}))},
 mixed:{title:"Huruf Campuran",api:"letter",items:[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map((x,i)=>{let t=i%2?x.toLowerCase():x;return{text:t,answer:letterNames[x.toLowerCase()]}})},
-syllable:{title:"Suku Kata",api:"syllable",items:syllables.map(x=>({text:x,answer:x}))},
+syllableGroup:{title:"Kelompok Suku Kata",api:"syllable",items:[]},
+syllable:{title:"Suku Kata Campuran",api:"syllable",items:syllables.map(x=>({text:x,answer:x}))},
 word2:{title:"Kata 2 Suku Kata",colored:true,items:words2.map(p=>({parts:p,answer:p.join("")}))},
 word3:{title:"Kata 3 Suku Kata",colored:true,items:words3.map(p=>({parts:p,answer:p.join("")}))},
 plain:{title:"Kata Tanpa Warna",items:[...words2,...words3].map(p=>({text:p.join(""),answer:p.join("")}))}
@@ -61,10 +63,46 @@ function setState(s){document.body.className="state-"+s}
 function norm(x){return(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"")}
 function shuffleRound(source){let a=[...source];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}if(lastOfRound&&a.length>1&&a[0].answer===lastOfRound.answer)[a[0],a[1]]=[a[1],a[0]];return a}
 function speak(t){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="id-ID";u.rate=.8;speechSynthesis.speak(u)}
+const consonantGroups=["b","c","d","f","g","h","j","k","l","m","n","p","r","s","t"];
+let groupOrder=[],groupIndex=0,currentGroup="";
+function makeGroupItems(c){
+  return shuffleRound(["a","i","u","e","o"].map(v=>({text:c+v,answer:c+v})));
+}
+function startGroupRound(){
+  groupOrder=shuffleRound(consonantGroups.map(c=>({text:c,answer:c}))).map(x=>x.text);
+  groupIndex=0;
+  currentGroup=groupOrder[groupIndex];
+  return makeGroupItems(currentGroup);
+}
 function playCorrectSound(){try{const C=window.AudioContext||window.webkitAudioContext,c=new C(),g=c.createGain(),n=c.currentTime;g.connect(c.destination);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.16,n+.01);g.gain.exponentialRampToValueAtTime(.0001,n+.4);[659.25,783.99].forEach((f,i)=>{let o=c.createOscillator();o.frequency.value=f;o.connect(g);o.start(n+i*.09);o.stop(n+.23+i*.09)});setTimeout(()=>c.close(),600)}catch(e){}}
-function render(){let cfg=levels[lvl],it=items[idx];target.innerHTML="";if(cfg.colored)it.parts.forEach(p=>{let s=document.createElement("span");s.className="syll";s.textContent=p;target.appendChild(s)});else target.textContent=it.text;feedback.textContent="";feedback.className="feedback";heard.textContent="";$("progress").textContent=`${cfg.title} • ${idx+1}/${items.length}`;$("score").textContent=`Benar: ${correct}`;$("info").textContent=cfg.api?"Rekam lokal → trim → kirim clip":"Speech recognition browser"}
-function start(name){captureToken++;recording=false;lvl=name;idx=0;correct=0;wrongAttempts=0;lastOfRound=null;items=shuffleRound(levels[lvl].items);menu.style.display="none";game.style.display="block";setState("idle");render();if(levels[lvl].api)setTimeout(()=>beginAuto(),500)}
-function next(){wrongAttempts=0;idx++;if(idx>=items.length){lastOfRound=items[items.length-1];items=shuffleRound(levels[lvl].items);idx=0}render()}
+function render(){let cfg=levels[lvl],it=items[idx];target.innerHTML="";if(cfg.colored)it.parts.forEach(p=>{let s=document.createElement("span");s.className="syll";s.textContent=p;target.appendChild(s)});else target.textContent=it.text;feedback.textContent="";feedback.className="feedback";heard.textContent="";$("progress").textContent=lvl==="syllableGroup"
+ ? `${cfg.title} ${currentGroup.toUpperCase()} • ${idx+1}/5`
+ : `${cfg.title} • ${idx+1}/${items.length}`;$("score").textContent=`Benar: ${correct}`;$("info").textContent=cfg.api?"Rekam lokal → trim → kirim clip":"Speech recognition browser"}
+function start(name){
+ captureToken++;recording=false;lvl=name;idx=0;correct=0;wrongAttempts=0;lastOfRound=null;
+ items=(lvl==="syllableGroup")?startGroupRound():shuffleRound(levels[lvl].items);
+ menu.style.display="none";game.style.display="block";setState("idle");render();
+ if(levels[lvl].api)setTimeout(()=>beginAuto(),500)
+}
+function next(){
+ wrongAttempts=0;idx++;
+ if(idx>=items.length){
+   lastOfRound=items[items.length-1];
+   if(lvl==="syllableGroup"){
+     groupIndex++;
+     if(groupIndex>=groupOrder.length){
+       groupOrder=shuffleRound(consonantGroups.map(c=>({text:c,answer:c}))).map(x=>x.text);
+       groupIndex=0;
+     }
+     currentGroup=groupOrder[groupIndex];
+     items=makeGroupItems(currentGroup);
+   }else{
+     items=shuffleRound(levels[lvl].items);
+   }
+   idx=0;
+ }
+ render()
+}
 document.querySelectorAll(".level").forEach(b=>b.onclick=()=>start(b.dataset.level));
 $("back").onclick=()=>{captureToken++;recording=false;speechSynthesis.cancel();game.style.display="none";menu.style.display="block";setState("idle")};
 $("listen").onclick=()=>speak(items[idx].answer);
