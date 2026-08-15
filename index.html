@@ -286,7 +286,13 @@ async function ensureRealtimeSession(type){
       }
       if(ev.type==="error"){
         const msg=ev.error?.message||"Realtime error";
+        console.error("Realtime error event:", ev);
         waitingResponse=false;
+
+        if(!rtSessionConfigured && rtSessionConfiguredResolve){
+          heard.textContent="Konfigurasi error: "+msg;
+          setState("wrong");
+        }
 
         // If an earlier automatic response was still active, cancel it and
         // recover cleanly. This should be rare after waiting for session.updated.
@@ -332,8 +338,16 @@ async function ensureRealtimeSession(type){
       type:"session.update",
       session:{
         type:"realtime",
-        turn_detection:null,
-        output_modalities:["text"]
+        output_modalities:["text"],
+        audio:{
+          input:{
+            format:{
+              type:"audio/pcm",
+              rate:24000
+            },
+            turn_detection:null
+          }
+        }
       }
     }));
 
