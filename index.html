@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>Flashcard Membaca</title>
+<title>Belajar Membaca</title>
 <style>
   :root{
     --bg:#f6f7fb;
@@ -21,59 +21,59 @@
     background:var(--bg);
     color:var(--text);
     min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
     padding:20px;
   }
-  .app{
-    width:min(760px,100%);
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:34px;margin:10px 0 6px;text-align:center}
+  .sub{color:var(--muted);text-align:center;margin-bottom:24px}
+  .levels{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px;
   }
+  .level{
+    background:var(--card);
+    border:0;
+    border-radius:22px;
+    padding:22px;
+    text-align:left;
+    box-shadow:0 8px 24px rgba(0,0,0,.07);
+    cursor:pointer;
+  }
+  .level strong{display:block;font-size:22px;margin-bottom:6px}
+  .level span{color:var(--muted);font-size:16px}
+  .game{display:none}
   .top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:14px;
-    gap:12px;
+    display:flex;justify-content:space-between;align-items:center;
+    gap:12px;margin-bottom:14px
   }
-  .progress{
-    font-size:18px;
-    color:var(--muted);
+  .back{
+    background:#e5e7eb;border:0;border-radius:14px;padding:10px 14px;
+    font-size:17px;font-weight:700;cursor:pointer
   }
-  .score{
-    font-size:18px;
-    font-weight:700;
-  }
+  .progress{font-size:17px;color:var(--muted)}
+  .score{font-size:17px;font-weight:700}
   .card{
     background:var(--card);
     border-radius:28px;
-    min-height:390px;
-    padding:32px 24px;
+    min-height:360px;
+    padding:34px 24px;
     box-shadow:0 12px 35px rgba(0,0,0,.08);
     display:flex;
-    flex-direction:column;
     align-items:center;
     justify-content:center;
     text-align:center;
   }
-  .emoji{
-    font-size:110px;
-    line-height:1;
-    margin-bottom:24px;
-  }
-  .word{
-    font-size:clamp(52px,10vw,88px);
-    font-weight:800;
+  .target{
+    font-size:clamp(64px,13vw,110px);
+    font-weight:850;
     letter-spacing:1px;
-  }
-  .hint{
-    margin-top:12px;
-    color:var(--muted);
-    font-size:20px;
+    line-height:1.15;
+    word-break:break-word;
   }
   .feedback{
-    min-height:54px;
-    margin:20px 0 10px;
+    min-height:50px;
+    margin:20px 0 8px;
     font-size:30px;
     font-weight:800;
     text-align:center;
@@ -81,124 +81,196 @@
   .ok{color:var(--ok)}
   .bad{color:var(--bad)}
   .heard{
-    min-height:28px;
+    min-height:26px;
     text-align:center;
     color:var(--muted);
-    font-size:18px;
+    font-size:17px;
     margin-bottom:16px;
   }
-  .controls{
-    display:flex;
-    justify-content:center;
-    gap:14px;
-    flex-wrap:wrap;
+  .controls{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+  .controls button{
+    border:0;border-radius:18px;padding:16px 22px;
+    font-size:20px;font-weight:750;cursor:pointer
   }
-  button{
-    border:0;
-    border-radius:18px;
-    padding:16px 22px;
-    font-size:20px;
-    font-weight:700;
-    cursor:pointer;
-  }
-  #mic{
-    background:var(--accent);
-    color:white;
-    min-width:210px;
-  }
-  #next,#repeat{
-    background:#e5e7eb;
-    color:var(--text);
-  }
+  #mic{background:var(--accent);color:white;min-width:220px}
+  #listen{background:#e5e7eb;color:var(--text)}
   button:disabled{opacity:.5;cursor:not-allowed}
-  .small{
-    margin-top:18px;
-    text-align:center;
-    color:var(--muted);
-    font-size:14px;
-  }
+  .syllable:nth-child(odd){color:#2563eb}
+  .syllable:nth-child(even){color:#dc2626}
+  .small{text-align:center;color:var(--muted);font-size:14px;margin-top:16px}
 </style>
 </head>
 <body>
-<div class="app">
-  <div class="top">
-    <div class="progress" id="progress"></div>
-    <div class="score" id="score"></div>
-  </div>
+<div class="wrap">
 
-  <div class="card">
-    <div class="emoji" id="emoji">⚽</div>
-    <div class="word" id="word">bola</div>
-    <div class="hint">Baca kata ini dengan suara keras.</div>
-  </div>
+  <section id="menu">
+    <h1>Belajar Membaca</h1>
+    <div class="sub">Pilih level latihan.</div>
+    <div class="levels">
+      <button class="level" data-level="upper">
+        <strong>Huruf Besar</strong>
+        <span>A, B, C, D ...</span>
+      </button>
+      <button class="level" data-level="lower">
+        <strong>Huruf Kecil</strong>
+        <span>a, b, c, d ...</span>
+      </button>
+      <button class="level" data-level="mixed">
+        <strong>Huruf Campuran</strong>
+        <span>A, b, C, d ...</span>
+      </button>
+      <button class="level" data-level="syllable">
+        <strong>Suku Kata</strong>
+        <span>ba, bi, bu, be, bo ...</span>
+      </button>
+      <button class="level" data-level="word2">
+        <strong>Kata 2 Suku Kata</strong>
+        <span>Suku kata dibedakan warna.</span>
+      </button>
+      <button class="level" data-level="word3">
+        <strong>Kata 3 Suku Kata</strong>
+        <span>Latihan kata lebih panjang.</span>
+      </button>
+      <button class="level" data-level="plain">
+        <strong>Kata Tanpa Warna</strong>
+        <span>Membaca kata utuh tanpa bantuan visual.</span>
+      </button>
+    </div>
+  </section>
 
-  <div class="feedback" id="feedback"></div>
-  <div class="heard" id="heard"></div>
+  <section id="game" class="game">
+    <div class="top">
+      <button class="back" id="back">← Level</button>
+      <div class="progress" id="progress"></div>
+      <div class="score" id="score"></div>
+    </div>
 
-  <div class="controls">
-    <button id="repeat">🔊 Dengarkan</button>
-    <button id="mic">🎤 Ucapkan</button>
-    <button id="next">Berikutnya →</button>
-  </div>
+    <div class="card">
+      <div class="target" id="target"></div>
+    </div>
 
-  <div class="small">
-    Gunakan Chrome di Android. Izinkan akses mikrofon saat diminta.
-  </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="heard" id="heard"></div>
+
+    <div class="controls">
+      <button id="listen">🔊 Dengarkan</button>
+      <button id="mic">🎤 Ucapkan</button>
+    </div>
+    <div class="small">Jika benar, soal berikutnya muncul otomatis.</div>
+  </section>
+
 </div>
 
 <script>
-const cards = [
-  {word:"bola", emoji:"⚽"},
-  {word:"buku", emoji:"📘"},
-  {word:"baju", emoji:"👕"},
-  {word:"meja", emoji:"🪑"},
-  {word:"mata", emoji:"👀"},
-  {word:"kaki", emoji:"🦶"},
-  {word:"roti", emoji:"🍞"},
-  {word:"susu", emoji:"🥛"},
-  {word:"sapi", emoji:"🐄"},
-  {word:"kuda", emoji:"🐎"},
-  {word:"ikan", emoji:"🐟"},
-  {word:"apel", emoji:"🍎"},
-  {word:"topi", emoji:"🧢"},
-  {word:"padi", emoji:"🌾"},
-  {word:"pipi", emoji:"😊"},
-  {word:"gigi", emoji:"🦷"},
-  {word:"jari", emoji:"☝️"},
-  {word:"kue", emoji:"🧁"},
-  {word:"nasi", emoji:"🍚"},
-  {word:"rumah", emoji:"🏠"}
-];
+const levels = {
+  upper: {
+    title: "Huruf Besar",
+    items: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(x => ({text:x, answer:x}))
+  },
+  lower: {
+    title: "Huruf Kecil",
+    items: "abcdefghijklmnopqrstuvwxyz".split("").map(x => ({text:x, answer:x}))
+  },
+  mixed: {
+    title: "Huruf Campuran",
+    items: ["A","b","C","d","E","f","G","h","I","j","K","l","M","n","O","p","Q","r","S","t","U","v","W","x","Y","z"]
+      .map(x => ({text:x, answer:x}))
+  },
+  syllable: {
+    title: "Suku Kata",
+    items: [
+      "ba","bi","bu","be","bo",
+      "ca","ci","cu","ce","co",
+      "da","di","du","de","do",
+      "fa","fi","fu","fe","fo",
+      "ga","gi","gu","ge","go",
+      "ha","hi","hu","he","ho",
+      "ja","ji","ju","je","jo",
+      "ka","ki","ku","ke","ko",
+      "la","li","lu","le","lo",
+      "ma","mi","mu","me","mo",
+      "na","ni","nu","ne","no",
+      "pa","pi","pu","pe","po",
+      "ra","ri","ru","re","ro",
+      "sa","si","su","se","so",
+      "ta","ti","tu","te","to"
+    ].map(x => ({text:x, answer:x}))
+  },
+  word2: {
+    title: "Kata 2 Suku Kata",
+    colored: true,
+    items: [
+      {parts:["ba","ju"], answer:"baju"},
+      {parts:["bo","la"], answer:"bola"},
+      {parts:["bu","ku"], answer:"buku"},
+      {parts:["ma","ta"], answer:"mata"},
+      {parts:["sa","pi"], answer:"sapi"},
+      {parts:["ku","da"], answer:"kuda"},
+      {parts:["ro","ti"], answer:"roti"},
+      {parts:["su","su"], answer:"susu"},
+      {parts:["gi","gi"], answer:"gigi"},
+      {parts:["ja","ri"], answer:"jari"},
+      {parts:["to","pi"], answer:"topi"},
+      {parts:["na","si"], answer:"nasi"},
+      {parts:["pi","pi"], answer:"pipi"},
+      {parts:["ka","ki"], answer:"kaki"},
+      {parts:["pa","di"], answer:"padi"}
+    ]
+  },
+  word3: {
+    title: "Kata 3 Suku Kata",
+    colored: true,
+    items: [
+      {parts:["ke","la","pa"], answer:"kelapa"},
+      {parts:["se","pa","tu"], answer:"sepatu"},
+      {parts:["ke","me","ja"], answer:"kemeja"},
+      {parts:["ke","pa","la"], answer:"kepala"},
+      {parts:["ke","na","ri"], answer:"kenari"},
+      {parts:["ke","li","ci"], answer:"kelici"},
+      {parts:["pe","pa","ya"], answer:"pepaya"},
+      {parts:["ce","la","na"], answer:"celana"},
+      {parts:["se","pe","da"], answer:"sepeda"},
+      {parts:["to","ma","to"], answer:"tomato"}
+    ]
+  },
+  plain: {
+    title: "Kata Tanpa Warna",
+    items: [
+      "baju","bola","buku","mata","sapi","kuda","roti","susu","gigi","jari",
+      "topi","nasi","pipi","kaki","padi","kelapa","sepatu","kemeja","kepala","pepaya","celana","sepeda"
+    ].map(x => ({text:x, answer:x}))
+  }
+};
 
+let currentLevel = null;
+let items = [];
 let index = 0;
 let correct = 0;
-let attempts = 0;
 
-const elWord = document.getElementById("word");
-const elEmoji = document.getElementById("emoji");
-const elFeedback = document.getElementById("feedback");
-const elHeard = document.getElementById("heard");
-const elProgress = document.getElementById("progress");
-const elScore = document.getElementById("score");
-const btnMic = document.getElementById("mic");
-const btnNext = document.getElementById("next");
-const btnRepeat = document.getElementById("repeat");
+const menu = document.getElementById("menu");
+const game = document.getElementById("game");
+const target = document.getElementById("target");
+const feedback = document.getElementById("feedback");
+const heard = document.getElementById("heard");
+const progress = document.getElementById("progress");
+const score = document.getElementById("score");
+const mic = document.getElementById("mic");
+const listen = document.getElementById("listen");
+const back = document.getElementById("back");
 
-function render(){
-  const c = cards[index];
-  elWord.textContent = c.word;
-  elEmoji.textContent = c.emoji;
-  elFeedback.textContent = "";
-  elFeedback.className = "feedback";
-  elHeard.textContent = "";
-  elProgress.textContent = `Kartu ${index+1} / ${cards.length}`;
-  elScore.textContent = `Benar: ${correct}`;
+function shuffle(a){
+  const arr = [...a];
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
 }
 
 function normalize(s){
   return s.toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^a-z\s]/g,"")
+    .replace(/[^a-z]/g,"")
     .trim();
 }
 
@@ -211,25 +283,62 @@ function speak(text){
   speechSynthesis.speak(u);
 }
 
-function markCorrect(){
-  correct++;
-  elFeedback.textContent = "✓ Benar!";
-  elFeedback.className = "feedback ok";
-  speak("Benar");
-  elScore.textContent = `Benar: ${correct}`;
+function getAnswer(item){
+  return item.answer || item.text || "";
 }
 
-function markWrong(){
-  elFeedback.textContent = "✗ Coba lagi";
-  elFeedback.className = "feedback bad";
-  speak("Coba lagi");
+function render(){
+  const cfg = levels[currentLevel];
+  const item = items[index];
+  target.innerHTML = "";
+
+  if(cfg.colored && item.parts){
+    item.parts.forEach(p => {
+      const span = document.createElement("span");
+      span.className = "syllable";
+      span.textContent = p;
+      target.appendChild(span);
+    });
+  } else {
+    target.textContent = item.text;
+  }
+
+  feedback.textContent = "";
+  feedback.className = "feedback";
+  heard.textContent = "";
+  progress.textContent = `${cfg.title} • ${index+1}/${items.length}`;
+  score.textContent = `Benar: ${correct}`;
 }
+
+function startLevel(name){
+  currentLevel = name;
+  items = shuffle(levels[name].items);
+  index = 0;
+  correct = 0;
+  menu.style.display = "none";
+  game.style.display = "block";
+  render();
+}
+
+document.querySelectorAll(".level").forEach(btn => {
+  btn.addEventListener("click", () => startLevel(btn.dataset.level));
+});
+
+back.addEventListener("click", () => {
+  game.style.display = "none";
+  menu.style.display = "block";
+  speechSynthesis.cancel();
+});
+
+listen.addEventListener("click", () => {
+  speak(getAnswer(items[index]));
+});
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if(!SpeechRecognition){
-  btnMic.disabled = true;
-  elHeard.textContent = "Pengenalan suara tidak tersedia. Coba buka di Chrome Android.";
+  mic.disabled = true;
+  heard.textContent = "Speech recognition tidak tersedia. Gunakan Chrome Android.";
 } else {
   const recognition = new SpeechRecognition();
   recognition.lang = "id-ID";
@@ -237,56 +346,60 @@ if(!SpeechRecognition){
   recognition.continuous = false;
   recognition.maxAlternatives = 10;
 
-  btnMic.addEventListener("click", () => {
-    elFeedback.textContent = "";
-    elHeard.textContent = "Mendengarkan...";
-    btnMic.disabled = true;
-    try { recognition.start(); } catch(e) { btnMic.disabled = false; }
+  mic.addEventListener("click", () => {
+    feedback.textContent = "";
+    heard.textContent = "Mendengarkan...";
+    mic.disabled = true;
+    try { recognition.start(); } catch(e) { mic.disabled = false; }
   });
 
   recognition.onresult = (event) => {
-    btnMic.disabled = false;
-    attempts++;
-    const target = normalize(cards[index].word);
+    mic.disabled = false;
+    const targetAnswer = normalize(getAnswer(items[index]));
     const alternatives = [];
-    for(let i=0; i<event.results[0].length; i++){
+    for(let i=0;i<event.results[0].length;i++){
       alternatives.push(normalize(event.results[0][i].transcript));
     }
-    elHeard.textContent = "Terdengar: " + alternatives[0];
-    const ok = alternatives.some(x => x === target || x.split(/\s+/).includes(target));
-    if(ok) markCorrect();
-    else markWrong();
+
+    heard.textContent = "Terdengar: " + event.results[0][0].transcript;
+    const ok = alternatives.some(x => x === targetAnswer || x.split(/\s+/).includes(targetAnswer));
+
+    if(ok){
+      correct++;
+      score.textContent = `Benar: ${correct}`;
+      feedback.textContent = "✓ Benar!";
+      feedback.className = "feedback ok";
+      speak("Benar");
+      setTimeout(() => {
+        index++;
+        if(index >= items.length){
+          items = shuffle(levels[currentLevel].items);
+          index = 0;
+        }
+        render();
+      }, 700);
+    }else{
+      feedback.textContent = "✗ Coba lagi";
+      feedback.className = "feedback bad";
+    }
   };
 
   recognition.onerror = (event) => {
-    btnMic.disabled = false;
+    mic.disabled = false;
     const messages = {
       "not-allowed": "ERROR: not-allowed — izin mikrofon ditolak.",
       "service-not-allowed": "ERROR: service-not-allowed — layanan speech recognition tidak diizinkan.",
-      "no-speech": "ERROR: no-speech — tidak ada suara terdeteksi. Tekan lalu langsung bicara.",
-      "audio-capture": "ERROR: audio-capture — mikrofon tidak dapat digunakan browser.",
+      "no-speech": "Tidak ada suara terdeteksi. Tekan lalu langsung bicara.",
+      "audio-capture": "Mikrofon tidak dapat digunakan browser.",
       "network": "ERROR: network — layanan speech recognition Chrome tidak dapat dihubungi.",
-      "aborted": "ERROR: aborted — pengenalan suara dihentikan.",
-      "language-not-supported": "ERROR: language-not-supported — Bahasa Indonesia tidak didukung."
+      "aborted": "Pengenalan suara dihentikan.",
+      "language-not-supported": "Bahasa Indonesia tidak didukung."
     };
-    elHeard.textContent = messages[event.error] || ("ERROR SpeechRecognition: " + event.error);
-    elFeedback.textContent = "Coba lagi";
-    elFeedback.className = "feedback bad";
+    heard.textContent = messages[event.error] || ("ERROR SpeechRecognition: " + event.error);
   };
 
-  recognition.onend = () => {
-    btnMic.disabled = false;
-  };
+  recognition.onend = () => mic.disabled = false;
 }
-
-btnNext.addEventListener("click", () => {
-  index = (index + 1) % cards.length;
-  render();
-});
-
-btnRepeat.addEventListener("click", () => speak(cards[index].word));
-
-render();
 </script>
 </body>
 </html>
