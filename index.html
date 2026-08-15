@@ -234,7 +234,8 @@ if(!SpeechRecognition){
   const recognition = new SpeechRecognition();
   recognition.lang = "id-ID";
   recognition.interimResults = false;
-  recognition.maxAlternatives = 5;
+  recognition.continuous = false;
+  recognition.maxAlternatives = 10;
 
   btnMic.addEventListener("click", () => {
     elFeedback.textContent = "";
@@ -259,11 +260,18 @@ if(!SpeechRecognition){
 
   recognition.onerror = (event) => {
     btnMic.disabled = false;
-    if(event.error === "not-allowed"){
-      elHeard.textContent = "Akses mikrofon belum diizinkan.";
-    } else {
-      elHeard.textContent = "Suara belum terbaca. Coba lagi.";
-    }
+    const messages = {
+      "not-allowed": "ERROR: not-allowed — izin mikrofon ditolak.",
+      "service-not-allowed": "ERROR: service-not-allowed — layanan speech recognition tidak diizinkan.",
+      "no-speech": "ERROR: no-speech — tidak ada suara terdeteksi. Tekan lalu langsung bicara.",
+      "audio-capture": "ERROR: audio-capture — mikrofon tidak dapat digunakan browser.",
+      "network": "ERROR: network — layanan speech recognition Chrome tidak dapat dihubungi.",
+      "aborted": "ERROR: aborted — pengenalan suara dihentikan.",
+      "language-not-supported": "ERROR: language-not-supported — Bahasa Indonesia tidak didukung."
+    };
+    elHeard.textContent = messages[event.error] || ("ERROR SpeechRecognition: " + event.error);
+    elFeedback.textContent = "Coba lagi";
+    elFeedback.className = "feedback bad";
   };
 
   recognition.onend = () => {
