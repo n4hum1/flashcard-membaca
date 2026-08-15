@@ -6,7 +6,13 @@
 <title>Belajar Membaca</title>
 <style>
 :root{--bg:#f5f6fa;--text:#1f2937;--muted:#6b7280;--blue:#2563eb;--green:#16a34a;--red:#dc2626}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text);padding:18px}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text);padding:18px;transition:background-color .22s ease}
+body.state-idle{background:#f5f6fa}
+body.state-ready{background:#dcfce7}
+body.state-listening{background:#dbeafe}
+body.state-processing{background:#ffedd5}
+body.state-correct{background:#bbf7d0}
+body.state-wrong{background:#fee2e2}
 .wrap{max-width:900px;margin:auto} h1{text-align:center;margin:10px 0 5px}.sub{text-align:center;color:var(--muted);margin-bottom:22px}
 .levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
 .level{border:0;background:white;border-radius:22px;padding:22px;text-align:left;box-shadow:0 8px 24px #00000010}
@@ -57,6 +63,11 @@ const levels={
 };
 let lvl=null,items=[],idx=0,correct=0,lastOfRound=null;
 const $=id=>document.getElementById(id), menu=$("menu"),game=$("game"),target=$("target"),feedback=$("feedback"),heard=$("heard"),mic=$("mic");
+function setState(state){
+  document.body.classList.remove("state-idle","state-ready","state-listening","state-processing","state-correct","state-wrong");
+  document.body.classList.add("state-"+state);
+}
+setState("idle");
 function shuffleRound(source){
  let a=[...source]; for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
  if(lastOfRound && a.length>1 && a[0].answer===lastOfRound.answer){[a[0],a[1]]=[a[1],a[0]]}
@@ -68,7 +79,7 @@ function start(name){
  sessionQuestionsUsed=0;
  lvl=name;idx=0;correct=0;lastOfRound=null;
  items=shuffleRound(levels[lvl].items);
- menu.style.display="none";game.style.display="block";render();
+ menu.style.display="none";game.style.display="block";setState("idle");render();
 }
 function render(){
  let cfg=levels[lvl],it=items[idx];target.innerHTML="";
@@ -137,7 +148,7 @@ function result(ok,label){
 }
 function speak(t){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="id-ID";u.rate=.8;speechSynthesis.speak(u)}
 document.querySelectorAll(".level").forEach(b=>b.onclick=()=>start(b.dataset.level));
-$("back").onclick=()=>{speechSynthesis.cancel();closeRealtimeSession();sessionQuestionsUsed=0;game.style.display="none";menu.style.display="block"};
+$("back").onclick=()=>{speechSynthesis.cancel();closeRealtimeSession();sessionQuestionsUsed=0;game.style.display="none";menu.style.display="block";setState("idle")};
 $("listen").onclick=()=>speak(items[idx].answer);
 
 // Complete words: browser STT.
@@ -319,7 +330,7 @@ async function ensureRealtimeSession(type){
 
 async function sendTrimmedClip(samples,sampleRate){
   stopLocalMic();
-  heard.textContent="Memeriksa...";
+  heard.textContent="Memeriksa..."; setState("processing");
   feedback.textContent="";
 
   try{
@@ -338,7 +349,7 @@ async function sendTrimmedClip(samples,sampleRate){
     rtDc.send(JSON.stringify({type:"response.create",response:{output_modalities:["text"]}}));
   }catch(e){
     waitingResponse=false;
-    heard.textContent="Error: "+e.message;
+    heard.textContent="Error: "+e.message; setState("wrong");
     setTimeout(()=>beginAutoListening(),900);
   }
 }
@@ -361,7 +372,7 @@ async function beginAutoListening(){
 
     localListening=true;localSpeaking=false;localFrames=[];preRoll=[];
     silenceMs=0;speechMs=0;lastProcessTime=performance.now();
-    heard.textContent="🎤 Silakan ucapkan";
+    heard.textContent="🎤 Silakan ucapkan"; setState("ready");
 
     processorNode.onaudioprocess=ev=>{
       if(!localListening)return;
@@ -383,7 +394,7 @@ async function beginAutoListening(){
           localFrames=[...preRoll,frame];
           preRoll=[];
           speechMs=dt;silenceMs=0;
-          heard.textContent="Mendengarkan...";
+          heard.textContent="Mendengarkan..."; setState("listening");
         }
       }else{
         localFrames.push(frame);
@@ -402,7 +413,7 @@ async function beginAutoListening(){
     };
   }catch(e){
     stopLocalMic();
-    heard.textContent="Mic error: "+e.message;
+    heard.textContent="Mic error: "+e.message; setState("wrong");
   }
 }
 
@@ -410,6 +421,7 @@ async function beginAutoListening(){
 function result(ok,label){
  heard.textContent=label?`Terdengar: ${label}`:"Suara belum terbaca";
  if(ok){
+   setState("correct");
    correct++;
    feedback.textContent="✓ Benar!";
    feedback.className="feedback ok";
@@ -417,9 +429,11 @@ function result(ok,label){
    playCorrectSound();
    setTimeout(()=>{
      next();
+     setState("idle");
      setTimeout(()=>beginAutoListening(),450);
    },700);
  }else{
+   setState("wrong");
    feedback.textContent="✗ Coba lagi";
    feedback.className="feedback bad";
    setTimeout(()=>beginAutoListening(),900);
@@ -433,7 +447,7 @@ mic.onclick=()=>{
    stopLocalMic();
    setTimeout(()=>beginAutoListening(),200);
  }else if(rec){
-   mic.disabled=true;heard.textContent="Mendengarkan...";
+   mic.disabled=true;heard.textContent="Mendengarkan..."; setState("listening");
    try{rec.start()}catch(e){mic.disabled=false}
  }else heard.textContent="Speech recognition browser tidak tersedia.";
 };
