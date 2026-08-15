@@ -61,7 +61,7 @@ const levels={
  word3:{title:"Kata 3 Suku Kata",colored:true,items:words3.map(p=>({parts:p,answer:p.join("")}))},
  plain:{title:"Kata Tanpa Warna",items:[...words2,...words3].map(p=>({text:p.join(""),answer:p.join("")}))}
 };
-let lvl=null,items=[],idx=0,correct=0,lastOfRound=null;
+let lvl=null,items=[],idx=0,correct=0,lastOfRound=null,wrongAttempts=0;
 const $=id=>document.getElementById(id), menu=$("menu"),game=$("game"),target=$("target"),feedback=$("feedback"),heard=$("heard"),mic=$("mic");
 function setState(state){
   document.body.classList.remove("state-idle","state-ready","state-listening","state-processing","state-correct","state-wrong");
@@ -77,7 +77,7 @@ function norm(x){return(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\
 function start(name){
  closeRealtimeSession();
  sessionQuestionsUsed=0;
- lvl=name;idx=0;correct=0;lastOfRound=null;
+ lvl=name;idx=0;correct=0;lastOfRound=null;wrongAttempts=0;
  items=shuffleRound(levels[lvl].items);
  menu.style.display="none";game.style.display="block";setState("idle");render();
 }
@@ -115,6 +115,7 @@ function playCorrectSound(){
 }
 
 function next(){
+ wrongAttempts=0;
  idx++;
  if(levels[lvl].rt){
    sessionQuestionsUsed++;
@@ -433,10 +434,22 @@ function result(ok,label){
      setTimeout(()=>beginAutoListening(),450);
    },700);
  }else{
+   wrongAttempts++;
    setState("wrong");
-   feedback.textContent="✗ Coba lagi";
    feedback.className="feedback bad";
-   setTimeout(()=>beginAutoListening(),900);
+
+   if(wrongAttempts>=2){
+     feedback.textContent="Lewati dulu →";
+     heard.textContent=label?`Terdengar: ${label}`:"Belum terbaca";
+     setTimeout(()=>{
+       next();
+       setState("idle");
+       setTimeout(()=>beginAutoListening(),450);
+     },1100);
+   }else{
+     feedback.textContent="✗ Coba sekali lagi";
+     setTimeout(()=>beginAutoListening(),900);
+   }
  }
 }
 
