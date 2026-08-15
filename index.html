@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Flashcard Membaca</title>
+<style>
+  :root{
+    --bg:#f6f7fb;
+    --card:#ffffff;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --ok:#16a34a;
+    --bad:#dc2626;
+    --accent:#2563eb;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .app{
+    width:min(760px,100%);
+  }
+  .top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+    gap:12px;
+  }
+  .progress{
+    font-size:18px;
+    color:var(--muted);
+  }
+  .score{
+    font-size:18px;
+    font-weight:700;
+  }
+  .card{
+    background:var(--card);
+    border-radius:28px;
+    min-height:390px;
+    padding:32px 24px;
+    box-shadow:0 12px 35px rgba(0,0,0,.08);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+  .emoji{
+    font-size:110px;
+    line-height:1;
+    margin-bottom:24px;
+  }
+  .word{
+    font-size:clamp(52px,10vw,88px);
+    font-weight:800;
+    letter-spacing:1px;
+  }
+  .hint{
+    margin-top:12px;
+    color:var(--muted);
+    font-size:20px;
+  }
+  .feedback{
+    min-height:54px;
+    margin:20px 0 10px;
+    font-size:30px;
+    font-weight:800;
+    text-align:center;
+  }
+  .ok{color:var(--ok)}
+  .bad{color:var(--bad)}
+  .heard{
+    min-height:28px;
+    text-align:center;
+    color:var(--muted);
+    font-size:18px;
+    margin-bottom:16px;
+  }
+  .controls{
+    display:flex;
+    justify-content:center;
+    gap:14px;
+    flex-wrap:wrap;
+  }
+  button{
+    border:0;
+    border-radius:18px;
+    padding:16px 22px;
+    font-size:20px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  #mic{
+    background:var(--accent);
+    color:white;
+    min-width:210px;
+  }
+  #next,#repeat{
+    background:#e5e7eb;
+    color:var(--text);
+  }
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .small{
+    margin-top:18px;
+    text-align:center;
+    color:var(--muted);
+    font-size:14px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="progress" id="progress"></div>
+    <div class="score" id="score"></div>
+  </div>
+
+  <div class="card">
+    <div class="emoji" id="emoji">⚽</div>
+    <div class="word" id="word">bola</div>
+    <div class="hint">Baca kata ini dengan suara keras.</div>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+  <div class="heard" id="heard"></div>
+
+  <div class="controls">
+    <button id="repeat">🔊 Dengarkan</button>
+    <button id="mic">🎤 Ucapkan</button>
+    <button id="next">Berikutnya →</button>
+  </div>
+
+  <div class="small">
+    Gunakan Chrome di Android. Izinkan akses mikrofon saat diminta.
+  </div>
+</div>
+
+<script>
+const cards = [
+  {word:"bola", emoji:"⚽"},
+  {word:"buku", emoji:"📘"},
+  {word:"baju", emoji:"👕"},
+  {word:"meja", emoji:"🪑"},
+  {word:"mata", emoji:"👀"},
+  {word:"kaki", emoji:"🦶"},
+  {word:"roti", emoji:"🍞"},
+  {word:"susu", emoji:"🥛"},
+  {word:"sapi", emoji:"🐄"},
+  {word:"kuda", emoji:"🐎"},
+  {word:"ikan", emoji:"🐟"},
+  {word:"apel", emoji:"🍎"},
+  {word:"topi", emoji:"🧢"},
+  {word:"padi", emoji:"🌾"},
+  {word:"pipi", emoji:"😊"},
+  {word:"gigi", emoji:"🦷"},
+  {word:"jari", emoji:"☝️"},
+  {word:"kue", emoji:"🧁"},
+  {word:"nasi", emoji:"🍚"},
+  {word:"rumah", emoji:"🏠"}
+];
+
+let index = 0;
+let correct = 0;
+let attempts = 0;
+
+const elWord = document.getElementById("word");
+const elEmoji = document.getElementById("emoji");
+const elFeedback = document.getElementById("feedback");
+const elHeard = document.getElementById("heard");
+const elProgress = document.getElementById("progress");
+const elScore = document.getElementById("score");
+const btnMic = document.getElementById("mic");
+const btnNext = document.getElementById("next");
+const btnRepeat = document.getElementById("repeat");
+
+function render(){
+  const c = cards[index];
+  elWord.textContent = c.word;
+  elEmoji.textContent = c.emoji;
+  elFeedback.textContent = "";
+  elFeedback.className = "feedback";
+  elHeard.textContent = "";
+  elProgress.textContent = `Kartu ${index+1} / ${cards.length}`;
+  elScore.textContent = `Benar: ${correct}`;
+}
+
+function normalize(s){
+  return s.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z\s]/g,"")
+    .trim();
+}
+
+function speak(text){
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "id-ID";
+  u.rate = 0.8;
+  speechSynthesis.speak(u);
+}
+
+function markCorrect(){
+  correct++;
+  elFeedback.textContent = "✓ Benar!";
+  elFeedback.className = "feedback ok";
+  speak("Benar");
+  elScore.textContent = `Benar: ${correct}`;
+}
+
+function markWrong(){
+  elFeedback.textContent = "✗ Coba lagi";
+  elFeedback.className = "feedback bad";
+  speak("Coba lagi");
+}
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if(!SpeechRecognition){
+  btnMic.disabled = true;
+  elHeard.textContent = "Pengenalan suara tidak tersedia. Coba buka di Chrome Android.";
+} else {
+  const recognition = new SpeechRecognition();
+  recognition.lang = "id-ID";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 5;
+
+  btnMic.addEventListener("click", () => {
+    elFeedback.textContent = "";
+    elHeard.textContent = "Mendengarkan...";
+    btnMic.disabled = true;
+    try { recognition.start(); } catch(e) { btnMic.disabled = false; }
+  });
+
+  recognition.onresult = (event) => {
+    btnMic.disabled = false;
+    attempts++;
+    const target = normalize(cards[index].word);
+    const alternatives = [];
+    for(let i=0; i<event.results[0].length; i++){
+      alternatives.push(normalize(event.results[0][i].transcript));
+    }
+    elHeard.textContent = "Terdengar: " + alternatives[0];
+    const ok = alternatives.some(x => x === target || x.split(/\s+/).includes(target));
+    if(ok) markCorrect();
+    else markWrong();
+  };
+
+  recognition.onerror = (event) => {
+    btnMic.disabled = false;
+    if(event.error === "not-allowed"){
+      elHeard.textContent = "Akses mikrofon belum diizinkan.";
+    } else {
+      elHeard.textContent = "Suara belum terbaca. Coba lagi.";
+    }
+  };
+
+  recognition.onend = () => {
+    btnMic.disabled = false;
+  };
+}
+
+btnNext.addEventListener("click", () => {
+  index = (index + 1) % cards.length;
+  render();
+});
+
+btnRepeat.addEventListener("click", () => speak(cards[index].word));
+
+render();
+</script>
+</body>
+</html>
