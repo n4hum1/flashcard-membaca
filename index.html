@@ -1,34 +1,29 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Belajar Membaca</title>
 <style>
-:root{--bg:#f5f6fa;--text:#1f2937;--muted:#6b7280;--blue:#2563eb;--green:#16a34a;--red:#dc2626}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text);padding:18px;transition:background-color .22s ease}
-body.state-idle{background:#f5f6fa}
-body.state-ready{background:#dcfce7}
-body.state-listening{background:#dbeafe}
-body.state-processing{background:#ffedd5}
-body.state-correct{background:#bbf7d0}
-body.state-wrong{background:#fee2e2}
-.wrap{max-width:900px;margin:auto} h1{text-align:center;margin:10px 0 5px}.sub{text-align:center;color:var(--muted);margin-bottom:22px}
+:root{--text:#1f2937;--muted:#6b7280;--blue:#2563eb;--green:#16a34a;--red:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--text);padding:18px;transition:background-color .22s ease;background:#f5f6fa}
+body.state-idle{background:#f5f6fa} body.state-ready{background:#dcfce7} body.state-listening{background:#dbeafe}
+body.state-processing{background:#ffedd5} body.state-correct{background:#bbf7d0} body.state-wrong{background:#fee2e2}
+.wrap{max-width:900px;margin:auto} h1{text-align:center}.sub{text-align:center;color:var(--muted);margin-bottom:22px}
 .levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
-.level{border:0;background:white;border-radius:22px;padding:22px;text-align:left;box-shadow:0 8px 24px #00000010}
+.level{border:0;background:#fff;border-radius:22px;padding:22px;text-align:left;box-shadow:0 8px 24px #00000010}
 .level strong{display:block;font-size:22px;margin-bottom:5px}.level span{color:var(--muted);font-size:16px}
-.game{display:none}.top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.back{border:0;border-radius:14px;padding:11px 14px;font-size:17px;font-weight:700}
-.card{min-height:350px;background:white;border-radius:28px;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;box-shadow:0 12px 30px #00000012}
+.game{display:none}.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.back{border:0;border-radius:14px;padding:11px 14px;font-size:17px;font-weight:700}
+.card{min-height:350px;background:#fff;border-radius:28px;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;box-shadow:0 12px 30px #00000012}
 .target{font-size:clamp(70px,14vw,120px);font-weight:850;line-height:1.12}.syll:nth-child(odd){color:#2563eb}.syll:nth-child(even){color:#dc2626}
 .feedback{text-align:center;min-height:48px;margin-top:16px;font-size:29px;font-weight:800}.heard{text-align:center;min-height:30px;color:var(--muted);font-size:17px}
 .controls{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:10px}.controls button{border:0;border-radius:18px;padding:16px 22px;font-size:20px;font-weight:750}
-#mic{background:var(--blue);color:white;min-width:220px}#listen{background:#e5e7eb}.ok{color:var(--green)}.bad{color:var(--red)}button:disabled{opacity:.5}
+#mic{background:var(--blue);color:#fff;min-width:220px}#listen{background:#e5e7eb}.ok{color:var(--green)}.bad{color:var(--red)}button:disabled{opacity:.5}
 .small{text-align:center;color:var(--muted);font-size:13px;margin-top:13px}
-</style>
-</head>
-<body><div class="wrap">
-<section id="menu"><h1>Belajar Membaca</h1><div class="sub">Pilih latihan.</div>
-<div class="levels">
+</style></head>
+<body class="state-idle"><div class="wrap">
+<section id="menu"><h1>Belajar Membaca</h1><div class="sub">Pilih latihan.</div><div class="levels">
 <button class="level" data-level="upper"><strong>Huruf Besar</strong><span>A, B, C, D ...</span></button>
 <button class="level" data-level="lower"><strong>Huruf Kecil</strong><span>a, b, c, d ...</span></button>
 <button class="level" data-level="mixed"><strong>Huruf Campuran</strong><span>A, b, C, d ...</span></button>
@@ -37,7 +32,6 @@ body.state-wrong{background:#fee2e2}
 <button class="level" data-level="word3"><strong>Kata 3 Suku Kata</strong><span>Kata lebih panjang.</span></button>
 <button class="level" data-level="plain"><strong>Kata Tanpa Warna</strong><span>Latihan membaca kata utuh.</span></button>
 </div></section>
-
 <section id="game" class="game">
 <div class="top"><button class="back" id="back">← Level</button><span id="progress"></span><strong id="score"></strong></div>
 <div class="card"><div class="target" id="target"></div></div>
@@ -45,7 +39,6 @@ body.state-wrong{background:#fee2e2}
 <div class="controls"><button id="listen">🔊 Dengarkan</button><button id="mic">🎤 Aktif Otomatis</button></div>
 <div class="small" id="info"></div>
 </section></div>
-
 <script>
 const BACKEND="https://flashcard-membaca-backend.vercel.app";
 const letterNames={a:"a",b:"be",c:"ce",d:"de",e:"e",f:"ef",g:"ge",h:"ha",i:"i",j:"je",k:"ka",l:"el",m:"em",n:"en",o:"o",p:"pe",q:"ki",r:"er",s:"es",t:"te",u:"u",v:"ve",w:"we",x:"eks",y:"ye",z:"zet"};
@@ -53,472 +46,98 @@ const syllables=["ba","bi","bu","be","bo","ca","ci","cu","ce","co","da","di","du
 const words2=[["ba","ju"],["bo","la"],["bu","ku"],["ma","ta"],["sa","pi"],["ku","da"],["ro","ti"],["su","su"],["gi","gi"],["ja","ri"],["to","pi"],["na","si"],["pi","pi"],["ka","ki"],["pa","di"]];
 const words3=[["ke","la","pa"],["se","pa","tu"],["ke","me","ja"],["ke","pa","la"],["pe","pa","ya"],["ce","la","na"],["se","pe","da"]];
 const levels={
- upper:{title:"Huruf Besar",rt:"letter",items:[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(x=>({text:x,answer:letterNames[x.toLowerCase()]}))},
- lower:{title:"Huruf Kecil",rt:"letter",items:[..."abcdefghijklmnopqrstuvwxyz"].map(x=>({text:x,answer:letterNames[x]}))},
- mixed:{title:"Huruf Campuran",rt:"letter",items:[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map((x,i)=>{let t=i%2?x.toLowerCase():x;return{text:t,answer:letterNames[x.toLowerCase()]}})},
- syllable:{title:"Suku Kata",rt:"syllable",items:syllables.map(x=>({text:x,answer:x}))},
- word2:{title:"Kata 2 Suku Kata",colored:true,items:words2.map(p=>({parts:p,answer:p.join("")}))},
- word3:{title:"Kata 3 Suku Kata",colored:true,items:words3.map(p=>({parts:p,answer:p.join("")}))},
- plain:{title:"Kata Tanpa Warna",items:[...words2,...words3].map(p=>({text:p.join(""),answer:p.join("")}))}
+upper:{title:"Huruf Besar",api:"letter",items:[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(x=>({text:x,answer:letterNames[x.toLowerCase()]}))},
+lower:{title:"Huruf Kecil",api:"letter",items:[..."abcdefghijklmnopqrstuvwxyz"].map(x=>({text:x,answer:letterNames[x]}))},
+mixed:{title:"Huruf Campuran",api:"letter",items:[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map((x,i)=>{let t=i%2?x.toLowerCase():x;return{text:t,answer:letterNames[x.toLowerCase()]}})},
+syllable:{title:"Suku Kata",api:"syllable",items:syllables.map(x=>({text:x,answer:x}))},
+word2:{title:"Kata 2 Suku Kata",colored:true,items:words2.map(p=>({parts:p,answer:p.join("")}))},
+word3:{title:"Kata 3 Suku Kata",colored:true,items:words3.map(p=>({parts:p,answer:p.join("")}))},
+plain:{title:"Kata Tanpa Warna",items:[...words2,...words3].map(p=>({text:p.join(""),answer:p.join("")}))}
 };
 let lvl=null,items=[],idx=0,correct=0,lastOfRound=null,wrongAttempts=0;
-const $=id=>document.getElementById(id), menu=$("menu"),game=$("game"),target=$("target"),feedback=$("feedback"),heard=$("heard"),mic=$("mic");
-function setState(state){
-  document.body.classList.remove("state-idle","state-ready","state-listening","state-processing","state-correct","state-wrong");
-  document.body.classList.add("state-"+state);
-}
-setState("idle");
-function shuffleRound(source){
- let a=[...source]; for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
- if(lastOfRound && a.length>1 && a[0].answer===lastOfRound.answer){[a[0],a[1]]=[a[1],a[0]]}
- return a;
-}
+let captureToken=0,recording=false;
+const $=id=>document.getElementById(id),menu=$("menu"),game=$("game"),target=$("target"),feedback=$("feedback"),heard=$("heard"),mic=$("mic");
+function setState(s){document.body.className="state-"+s}
 function norm(x){return(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z]/g,"")}
-function start(name){
- closeRealtimeSession();
- sessionQuestionsUsed=0;
- lvl=name;idx=0;correct=0;lastOfRound=null;wrongAttempts=0;
- items=shuffleRound(levels[lvl].items);
- menu.style.display="none";game.style.display="block";setState("idle");render();
-}
-function render(){
- let cfg=levels[lvl],it=items[idx];target.innerHTML="";
- if(cfg.colored){it.parts.forEach(p=>{let s=document.createElement("span");s.className="syll";s.textContent=p;target.appendChild(s)})} else target.textContent=it.text;
- feedback.textContent="";feedback.className="feedback";heard.textContent="";
- $("progress").textContent=`${cfg.title} • ${idx+1}/${items.length}`;$("score").textContent=`Benar: ${correct}`;
- $("info").textContent=cfg.rt?"Local trim • kirim hanya ucapan":"Speech recognition browser";
-}
-let sessionQuestionsUsed=0;
-const QUESTIONS_PER_SESSION=5;
-
-function playCorrectSound(){
- try{
-   const Ctx=window.AudioContext||window.webkitAudioContext;
-   const ctx=new Ctx();
-   const now=ctx.currentTime;
-   const gain=ctx.createGain();
-   gain.connect(ctx.destination);
-   gain.gain.setValueAtTime(0.0001,now);
-   gain.gain.exponentialRampToValueAtTime(0.18,now+0.015);
-   gain.gain.exponentialRampToValueAtTime(0.0001,now+0.42);
-
-   [659.25,783.99].forEach((freq,i)=>{
-     const osc=ctx.createOscillator();
-     osc.type="sine";
-     osc.frequency.value=freq;
-     osc.connect(gain);
-     osc.start(now+i*0.10);
-     osc.stop(now+0.25+i*0.10);
-   });
-   setTimeout(()=>ctx.close(),700);
- }catch(e){}
-}
-
-function next(){
- wrongAttempts=0;
- idx++;
- if(levels[lvl].rt){
-   sessionQuestionsUsed++;
-   if(sessionQuestionsUsed>=QUESTIONS_PER_SESSION){
-     closeRealtimeSession();
-     sessionQuestionsUsed=0;
-   }
- }
- if(idx>=items.length){
-   lastOfRound=items[items.length-1];
-   items=shuffleRound(levels[lvl].items);
-   idx=0;
-   closeRealtimeSession();
-   sessionQuestionsUsed=0;
- }
- render();
-}
+function shuffleRound(source){let a=[...source];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}if(lastOfRound&&a.length>1&&a[0].answer===lastOfRound.answer)[a[0],a[1]]=[a[1],a[0]];return a}
 function speak(t){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="id-ID";u.rate=.8;speechSynthesis.speak(u)}
+function playCorrectSound(){try{const C=window.AudioContext||window.webkitAudioContext,c=new C(),g=c.createGain(),n=c.currentTime;g.connect(c.destination);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.16,n+.01);g.gain.exponentialRampToValueAtTime(.0001,n+.4);[659.25,783.99].forEach((f,i)=>{let o=c.createOscillator();o.frequency.value=f;o.connect(g);o.start(n+i*.09);o.stop(n+.23+i*.09)});setTimeout(()=>c.close(),600)}catch(e){}}
+function render(){let cfg=levels[lvl],it=items[idx];target.innerHTML="";if(cfg.colored)it.parts.forEach(p=>{let s=document.createElement("span");s.className="syll";s.textContent=p;target.appendChild(s)});else target.textContent=it.text;feedback.textContent="";feedback.className="feedback";heard.textContent="";$("progress").textContent=`${cfg.title} • ${idx+1}/${items.length}`;$("score").textContent=`Benar: ${correct}`;$("info").textContent=cfg.api?"Rekam lokal → trim → kirim clip":"Speech recognition browser"}
+function start(name){captureToken++;recording=false;lvl=name;idx=0;correct=0;wrongAttempts=0;lastOfRound=null;items=shuffleRound(levels[lvl].items);menu.style.display="none";game.style.display="block";setState("idle");render();if(levels[lvl].api)setTimeout(()=>beginAuto(),500)}
+function next(){wrongAttempts=0;idx++;if(idx>=items.length){lastOfRound=items[items.length-1];items=shuffleRound(levels[lvl].items);idx=0}render()}
 document.querySelectorAll(".level").forEach(b=>b.onclick=()=>start(b.dataset.level));
-$("back").onclick=()=>{speechSynthesis.cancel();closeRealtimeSession();sessionQuestionsUsed=0;game.style.display="none";menu.style.display="block";setState("idle")};
+$("back").onclick=()=>{captureToken++;recording=false;speechSynthesis.cancel();game.style.display="none";menu.style.display="block";setState("idle")};
 $("listen").onclick=()=>speak(items[idx].answer);
 
-// Complete words: browser STT.
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec=SR?new SR():null;
-if(rec){rec.lang="id-ID";rec.interimResults=false;rec.maxAlternatives=10;rec.onresult=e=>{let arr=[];for(let i=0;i<e.results[0].length;i++)arr.push(e.results[0][i].transcript);result(arr.some(x=>norm(x)===norm(items[idx].answer)),arr[0])};rec.onerror=e=>{heard.textContent="Speech error: "+e.error};rec.onend=()=>mic.disabled=false}
-
-// Realtime session is kept for up to 5 completed questions,
-// but microphone audio is NEVER streamed to OpenAI.
-// Audio is captured and VAD-trimmed locally, then only the speech clip is uploaded.
-let rtPc=null,rtDc=null,rtType=null,rtReadyPromise=null;
-let rtSessionConfigured=false;
-let rtSessionConfiguredResolve=null;
-let localStream=null,audioCtx=null,sourceNode=null,processorNode=null;
-let localListening=false,localSpeaking=false,localFrames=[],preRoll=[];
-let silenceMs=0,speechMs=0,noiseFloor=0.008,lastProcessTime=0;
-let captureGeneration=0;
-
-const LOCAL_VAD = {
-  preRollMs: 180,
-  endSilenceMs: 420,
-  minSpeechMs: 120,
-  maxSpeechMs: 2200,
-  thresholdMultiplier: 3.0,
-  minimumThreshold: 0.018
-};
-
-function floatRms(buf){
-  let s=0;
-  for(let i=0;i<buf.length;i++) s+=buf[i]*buf[i];
-  return Math.sqrt(s/buf.length);
-}
-
-function concatFloat(chunks){
-  let n=0; for(const c of chunks)n+=c.length;
-  const out=new Float32Array(n); let p=0;
-  for(const c of chunks){out.set(c,p);p+=c.length}
-  return out;
-}
-
-function resampleLinear(input,fromRate,toRate){
-  if(fromRate===toRate)return input;
-  const ratio=fromRate/toRate;
-  const n=Math.max(1,Math.round(input.length/ratio));
-  const out=new Float32Array(n);
-  for(let i=0;i<n;i++){
-    const pos=i*ratio, a=Math.floor(pos), b=Math.min(a+1,input.length-1), t=pos-a;
-    out[i]=input[a]*(1-t)+input[b]*t;
-  }
-  return out;
-}
-
-function pcm16Base64(floatData){
-  const bytes=new Uint8Array(floatData.length*2);
-  const view=new DataView(bytes.buffer);
-  for(let i=0;i<floatData.length;i++){
-    const x=Math.max(-1,Math.min(1,floatData[i]));
-    view.setInt16(i*2,x<0?x*0x8000:x*0x7fff,true);
-  }
-  let binary="",step=0x8000;
-  for(let i=0;i<bytes.length;i+=step){
-    binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+step,bytes.length)));
-  }
-  return btoa(binary);
-}
-
-function stopLocalMic(){
-  captureGeneration++;
-  localListening=false;localSpeaking=false;localFrames=[];preRoll=[];
-  try{processorNode?.disconnect()}catch(e){}
-  try{sourceNode?.disconnect()}catch(e){}
-  try{localStream?.getTracks().forEach(t=>t.stop())}catch(e){}
-  try{audioCtx?.close()}catch(e){}
-  localStream=null;audioCtx=null;sourceNode=null;processorNode=null;
-}
-
-function closeRealtimeSession(){
-  stopLocalMic();
-  try{rtDc?.close()}catch(e){}
-  try{rtPc?.close()}catch(e){}
-  rtPc=rtDc=null;rtType=null;rtReadyPromise=null;
-  mic.disabled=false;
-}
-
-function realtimeTextFromEvent(ev){
-  if(ev.type==="response.output_text.delta"||ev.type==="response.text.delta") return ev.delta||"";
-  if(ev.type==="response.output_text.done"||ev.type==="response.text.done") return ev.text||"";
-  if(ev.type==="response.output_audio_transcript.delta") return ev.delta||"";
-  if(ev.type==="response.output_audio_transcript.done") return ev.transcript||"";
-  return "";
-}
-
-let responseText="",waitingResponse=false;
-
-async function ensureRealtimeSession(type){
-  if(rtDc?.readyState==="open" && rtType===type)return;
-  if(rtReadyPromise && rtType===type)return rtReadyPromise;
-
-  try{rtDc?.close()}catch(e){} try{rtPc?.close()}catch(e){}
-  rtPc=rtDc=null;rtReadyPromise=null;rtType=type;
-
-  rtReadyPromise=(async()=>{
-    const r=await fetch(BACKEND+"/api/client-secret",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({type})
-    });
-    const data=await r.json();
-    if(!r.ok)throw new Error(data.error||"Gagal membuat session");
-    const key=data.value||data.client_secret?.value;
-    if(!key)throw new Error("Client secret tidak ditemukan");
-
-    rtPc=new RTCPeerConnection();
-
-    // Realtime WebRTC requires an audio media section in the SDP offer.
-    // recvonly creates that section without sending the tablet microphone.
-    // Child speech is still captured locally, trimmed locally, then uploaded
-    // explicitly through input_audio_buffer.append.
-    rtPc.addTransceiver("audio", {direction:"recvonly"});
-
-    rtDc=rtPc.createDataChannel("oai-events");
-
-    rtDc.onmessage=e=>{
-      let ev;try{ev=JSON.parse(e.data)}catch(_){return}
-
-      if(ev.type==="session.updated"){
-        rtSessionConfigured=true;
-        if(rtSessionConfiguredResolve){
-          rtSessionConfiguredResolve();
-          rtSessionConfiguredResolve=null;
-        }
-      }
-
-      const txt=realtimeTextFromEvent(ev);
-      if(txt){
-        if(ev.type.endsWith(".done")) responseText=txt;
-        else responseText+=txt;
-      }
-      if(ev.type==="response.done" && waitingResponse){
-        waitingResponse=false;
-        if(!responseText){
-          for(const o of (ev.response?.output||[])){
-            for(const c of (o.content||[])) responseText+=c.text||c.transcript||"";
-          }
-        }
-        const label=norm(responseText)||"unknown";
-        responseText="";
-        result(label===norm(items[idx].answer),label);
-      }
-      if(ev.type==="error"){
-        const msg=ev.error?.message||"Realtime error";
-        console.error("Realtime error event:", ev);
-        waitingResponse=false;
-
-        if(!rtSessionConfigured && rtSessionConfiguredResolve){
-          heard.textContent="Konfigurasi error: "+msg;
-          setState("wrong");
-        }
-
-        // If an earlier automatic response was still active, cancel it and
-        // recover cleanly. This should be rare after waiting for session.updated.
-        if(msg.toLowerCase().includes("active response")){
-          try{rtDc.send(JSON.stringify({type:"response.cancel"}))}catch(e){}
-          heard.textContent="Sinkronisasi ulang...";
-          setState("processing");
-          setTimeout(()=>beginAutoListening(),1100);
-        }else{
-          heard.textContent="Error: "+msg;
-          setState("wrong");
-          setTimeout(()=>beginAutoListening(),900);
-        }
-      }
-    };
-
-    const offer=await rtPc.createOffer();
-    await rtPc.setLocalDescription(offer);
-    const sdp=await fetch("https://api.openai.com/v1/realtime/calls",{
-      method:"POST",body:offer.sdp,
-      headers:{"Authorization":"Bearer "+key,"Content-Type":"application/sdp"}
-    });
-    if(!sdp.ok)throw new Error(await sdp.text());
-    await rtPc.setRemoteDescription({type:"answer",sdp:await sdp.text()});
-
-    await new Promise((resolve,reject)=>{
-      if(rtDc.readyState==="open")return resolve();
-      const timer=setTimeout(()=>reject(new Error("Realtime connection timeout")),7000);
-      rtDc.onopen=()=>{clearTimeout(timer);resolve()};
-    });
-
-    // We endpoint locally, so disable server-side turn detection.
-    // Ask for text output only; the classification prompt itself remains the published prompt.
-    rtSessionConfigured=false;
-    const configuredPromise=new Promise((resolve,reject)=>{
-      rtSessionConfiguredResolve=resolve;
-      setTimeout(()=>{
-        if(!rtSessionConfigured) reject(new Error("Session configuration timeout"));
-      },5000);
-    });
-
-    rtDc.send(JSON.stringify({
-      type:"session.update",
-      session:{
-        type:"realtime",
-        output_modalities:["text"],
-        audio:{
-          input:{
-            format:{
-              type:"audio/pcm",
-              rate:24000
-            },
-            turn_detection:null
-          }
-        }
-      }
-    }));
-
-    // Critical: do not capture/send the first utterance until the server
-    // confirms that automatic VAD response creation has been disabled.
-    await configuredPromise;
-  })();
-
-  try{await rtReadyPromise}catch(e){
-    try{rtDc?.close()}catch(_){}
-    try{rtPc?.close()}catch(_){}
-    rtDc=rtPc=null;rtReadyPromise=null;rtType=null;
-    throw e;
-  }
-}
-
-async function sendTrimmedClip(samples,sampleRate){
-  stopLocalMic();
-  heard.textContent="Memeriksa..."; setState("processing");
-  feedback.textContent="";
-
-  try{
-    await ensureRealtimeSession(levels[lvl].rt);
-    if(!rtSessionConfigured) throw new Error("Session belum siap");
-    if(waitingResponse) return;
-    // Small edge trim after local VAD. This removes most silence while preserving consonant onset.
-    const edge=Math.floor(sampleRate*0.035);
-    let clip=samples.length>edge*2?samples.slice(edge,samples.length-edge):samples;
-    clip=resampleLinear(clip,sampleRate,24000);
-
-    const b64=pcm16Base64(clip);
-    responseText="";waitingResponse=true;
-
-    rtDc.send(JSON.stringify({type:"input_audio_buffer.clear"}));
-    rtDc.send(JSON.stringify({type:"input_audio_buffer.append",audio:b64}));
-    rtDc.send(JSON.stringify({type:"input_audio_buffer.commit"}));
-    rtDc.send(JSON.stringify({type:"response.create",response:{output_modalities:["text"]}}));
-  }catch(e){
-    waitingResponse=false;
-    heard.textContent="Error: "+e.message; setState("wrong");
-    setTimeout(()=>beginAutoListening(),900);
-  }
-}
-
-async function beginAutoListening(){
-  if(!levels[lvl]?.rt || waitingResponse || localListening)return;
-  const myGen=++captureGeneration;
-  try{
-    await ensureRealtimeSession(levels[lvl].rt);
-    if(myGen!==captureGeneration)return;
-
-    localStream=await navigator.mediaDevices.getUserMedia({
-      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}
-    });
-    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-    sourceNode=audioCtx.createMediaStreamSource(localStream);
-    processorNode=audioCtx.createScriptProcessor(1024,1,1);
-    sourceNode.connect(processorNode);
-    processorNode.connect(audioCtx.destination);
-
-    localListening=true;localSpeaking=false;localFrames=[];preRoll=[];
-    silenceMs=0;speechMs=0;lastProcessTime=performance.now();
-    heard.textContent="🎤 Silakan ucapkan"; setState("ready");
-
-    processorNode.onaudioprocess=ev=>{
-      if(!localListening)return;
-      const now=performance.now(),dt=Math.max(1,now-lastProcessTime);lastProcessTime=now;
-      const frame=new Float32Array(ev.inputBuffer.getChannelData(0));
-      const rms=floatRms(frame);
-
-      if(!localSpeaking){
-        // Adapt noise floor only while no speech is present.
-        noiseFloor=noiseFloor*0.97+rms*0.03;
-        const threshold=Math.max(LOCAL_VAD.minimumThreshold,noiseFloor*LOCAL_VAD.thresholdMultiplier);
-
-        preRoll.push(frame);
-        const maxPre=Math.ceil((LOCAL_VAD.preRollMs/1000)*audioCtx.sampleRate/frame.length);
-        while(preRoll.length>maxPre)preRoll.shift();
-
-        if(rms>threshold){
-          localSpeaking=true;
-          localFrames=[...preRoll,frame];
-          preRoll=[];
-          speechMs=dt;silenceMs=0;
-          heard.textContent="Mendengarkan..."; setState("listening");
-        }
-      }else{
-        localFrames.push(frame);
-        speechMs+=dt;
-        const threshold=Math.max(LOCAL_VAD.minimumThreshold,noiseFloor*LOCAL_VAD.thresholdMultiplier*0.72);
-        if(rms<threshold)silenceMs+=dt;else silenceMs=0;
-
-        if((silenceMs>=LOCAL_VAD.endSilenceMs && speechMs>=LOCAL_VAD.minSpeechMs) ||
-           speechMs>=LOCAL_VAD.maxSpeechMs){
-          const samples=concatFloat(localFrames);
-          const rate=audioCtx.sampleRate;
-          localListening=false;
-          sendTrimmedClip(samples,rate);
-        }
-      }
-    };
-  }catch(e){
-    stopLocalMic();
-    heard.textContent="Mic error: "+e.message; setState("wrong");
-  }
-}
-
-// Single result handler for all levels.
 function result(ok,label){
-  heard.textContent=label?`Terdengar: ${label}`:"Suara belum terbaca";
-
-  if(ok){
-    wrongAttempts=0;
-    setState("correct");
-    correct++;
-    feedback.textContent="✓ Benar!";
-    feedback.className="feedback ok";
-    $("score").textContent=`Benar: ${correct}`;
-    playCorrectSound();
-
-    setTimeout(()=>{
-      next();
-      setState("idle");
-      if(levels[lvl].rt) setTimeout(()=>beginAutoListening(),450);
-    },700);
-    return;
-  }
-
-  wrongAttempts += 1;
-  setState("wrong");
-  feedback.className="feedback bad";
-
-  if(wrongAttempts >= 2){
-    // Stop any active capture before moving on, so an old recording cannot
-    // submit a third result for the question that is being skipped.
-    stopLocalMic();
-    feedback.textContent="Lewati dulu →";
-    heard.textContent=label?`Terdengar: ${label} • 2× salah`:"2× belum terbaca";
-
-    setTimeout(()=>{
-      next(); // next() resets wrongAttempts to 0
-      setState("idle");
-      if(levels[lvl].rt) setTimeout(()=>beginAutoListening(),450);
-    },1000);
-  }else{
-    feedback.textContent="✗ Coba sekali lagi (1/2)";
-    if(levels[lvl].rt){
-      setTimeout(()=>beginAutoListening(),850);
-    }
-  }
+ heard.textContent=label?`Terdengar: ${label}`:"Suara belum terbaca";
+ if(ok){
+   wrongAttempts=0;correct++;setState("correct");feedback.textContent="✓ Benar!";feedback.className="feedback ok";$("score").textContent=`Benar: ${correct}`;playCorrectSound();
+   setTimeout(()=>{next();setState("idle");if(levels[lvl].api)setTimeout(()=>beginAuto(),450)},700);
+ }else{
+   wrongAttempts++;setState("wrong");feedback.className="feedback bad";
+   if(wrongAttempts>=2){
+     feedback.textContent="Lewati dulu →";
+     setTimeout(()=>{next();setState("idle");if(levels[lvl].api)setTimeout(()=>beginAuto(),450)},1000);
+   }else{
+     feedback.textContent="✗ Coba sekali lagi (1/2)";
+     if(levels[lvl].api)setTimeout(()=>beginAuto(),850);
+   }
+ }
 }
 
-// For API levels the mic is automatic. Button remains only as manual recovery.
-mic.textContent="🎤 Aktif Otomatis";
-mic.onclick=()=>{
- if(levels[lvl].rt){
-   stopLocalMic();
-   setTimeout(()=>beginAutoListening(),200);
- }else if(rec){
-   mic.disabled=true;heard.textContent="Mendengarkan..."; setState("listening");
-   try{rec.start()}catch(e){mic.disabled=false}
- }else heard.textContent="Speech recognition browser tidak tersedia.";
-};
+// Local VAD -> trimmed WAV
+function rms(a){let s=0;for(const x of a)s+=x*x;return Math.sqrt(s/a.length)}
+function concat(chunks){let n=chunks.reduce((a,c)=>a+c.length,0),o=new Float32Array(n),p=0;for(const c of chunks){o.set(c,p);p+=c.length}return o}
+function resample(input,from,to){if(from===to)return input;let r=from/to,n=Math.floor(input.length/r),o=new Float32Array(n);for(let i=0;i<n;i++){let p=i*r,a=Math.floor(p),b=Math.min(a+1,input.length-1),t=p-a;o[i]=input[a]*(1-t)+input[b]*t}return o}
+function wav(samples,sr){let b=new ArrayBuffer(44+samples.length*2),v=new DataView(b),str=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};str(0,"RIFF");v.setUint32(4,36+samples.length*2,true);str(8,"WAVE");str(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);str(36,"data");v.setUint32(40,samples.length*2,true);let o=44;for(const x of samples){let y=Math.max(-1,Math.min(1,x));v.setInt16(o,y<0?y*32768:y*32767,true);o+=2}return new Blob([b],{type:"audio/wav"})}
+async function b64(blob){let a=new Uint8Array(await blob.arrayBuffer()),s="",step=32768;for(let i=0;i<a.length;i+=step)s+=String.fromCharCode(...a.subarray(i,i+step));return btoa(s)}
 
-// Start local auto-mic after choosing an API-backed level.
-document.querySelectorAll(".level").forEach(b=>{
- const original=b.onclick;
- b.onclick=()=>{
-   original();
-   if(levels[lvl].rt)setTimeout(()=>beginAutoListening(),500);
+async function beginAuto(){
+ if(recording||!levels[lvl]?.api)return;
+ const token=++captureToken;recording=true;
+ let stream,ctx,source,proc,done=false,started=false,frames=[],pre=[],silence=0,elapsed=0,noise=.008;
+ const finish=async()=>{
+   if(done)return;done=true;recording=false;
+   try{proc.disconnect();source.disconnect()}catch(e){} try{stream.getTracks().forEach(t=>t.stop())}catch(e){}
+   const sr=ctx.sampleRate;try{await ctx.close()}catch(e){}
+   if(token!==captureToken)return;
+   if(!frames.length){heard.textContent="Tidak ada suara terdeteksi";setState("wrong");setTimeout(()=>beginAuto(),700);return}
+   let samples=concat(frames);
+   const pad=Math.floor(sr*.14);
+   if(samples.length>pad*2)samples=samples.slice(Math.max(0,pad/2),samples.length-Math.floor(pad/2));
+   samples=resample(samples,sr,16000);
+   const blob=wav(samples,16000);
+   setState("processing");heard.textContent="Memeriksa...";
+   try{
+     const endpoint=levels[lvl].api==="letter"?"/api/classify-letter":"/api/classify-syllable";
+     const r=await fetch(BACKEND+endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({audio:await b64(blob)})});
+     const data=await r.json();if(!r.ok)throw new Error(data.error||("HTTP "+r.status));
+     result(norm(data.label)===norm(items[idx].answer),data.label);
+   }catch(e){setState("wrong");heard.textContent="API error: "+e.message;setTimeout(()=>beginAuto(),900)}
  };
-});
+ try{
+   stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+   ctx=new (window.AudioContext||window.webkitAudioContext)();source=ctx.createMediaStreamSource(stream);proc=ctx.createScriptProcessor(1024,1,1);let sink=ctx.createGain();sink.gain.value=0;source.connect(proc);proc.connect(sink);sink.connect(ctx.destination);
+   setState("ready");heard.textContent="🎤 Silakan ucapkan";
+   proc.onaudioprocess=e=>{
+     let a=new Float32Array(e.inputBuffer.getChannelData(0)),r=rms(a),ms=a.length/ctx.sampleRate*1000;elapsed+=ms;
+     let threshold=Math.max(.018,noise*3);
+     if(!started){
+       noise=noise*.97+r*.03;pre.push(a);while(pre.length>Math.ceil(.18*ctx.sampleRate/a.length))pre.shift();
+       if(r>threshold){started=true;frames=[...pre,a];pre=[];silence=0;setState("listening");heard.textContent="Mendengarkan..."}
+       if(elapsed>3000&&!started)finish();
+     }else{
+       frames.push(a);if(r<Math.max(.014,noise*2.2))silence+=ms;else silence=0;
+       if(silence>=420||elapsed>=4500)finish();
+     }
+   };
+   setTimeout(finish,5000);
+ }catch(e){recording=false;setState("wrong");heard.textContent="Mic error: "+e.message}
+}
+mic.onclick=()=>{if(levels[lvl]?.api){captureToken++;recording=false;setTimeout(()=>beginAuto(),150)}else if(rec){mic.disabled=true;heard.textContent="Mendengarkan...";try{rec.start()}catch(e){mic.disabled=false}}};
 
+// Whole words retain browser speech recognition.
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=SR?new SR():null;
+if(rec){rec.lang="id-ID";rec.interimResults=false;rec.maxAlternatives=10;rec.onresult=e=>{let arr=[];for(let i=0;i<e.results[0].length;i++)arr.push(e.results[0][i].transcript);result(arr.some(x=>norm(x)===norm(items[idx].answer)),arr[0])};rec.onerror=e=>{heard.textContent="Speech error: "+e.error;setState("wrong")};rec.onend=()=>mic.disabled=false}
 </script></body></html>
